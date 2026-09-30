@@ -70,8 +70,10 @@
 - [x] **签到弹窗关不掉（用户反馈 Bug1）**：`signOverlay` 原先只有「领取」一个按钮，`claimSign()` 开头 `if(!pendingSign) return;` 且无遮罩点击关闭 → 领取完再进即死局。现拆 `closeSign()` + `syncSignBtn()`：按钮随领取态在「领取 ↔ 关闭」间切换，`claimSign()` 在非待领取态直接关闭，另加 `signOverlay` 遮罩点击关闭 —— 归 P0
 - [x] **去广告入口重复（用户反馈 Bug2）**：底部「去广告卡(内购)」与右侧活动栏「🚫去广告」指向同一 `showPurchase` 流程。先抽 `buyNoAds()`，`openEntry("noads")` 由 `.click()` 改直调函数（否则删 DOM 会抛错），再移除底部按钮并把该 footer 列数改 `1fr` —— 归 P0
 - [x] **验证桩常驻化**：原 Node 桩写在 `/tmp` 每轮被清 → 落盘为 `.workbuddy/tools/verify.js`（自动排除于 git）。改进点：① 每档尺寸用 `vm.createContext` 独立上下文（顶层 `const` 不再重复声明报错）；② 假 `requestAnimationFrame` 必须**递增时间戳**，否则 `animStep` 的 `t += ts-last` 恒为 0、动画永远跑不完（本轮踩坑）；③ 假 `setTimeout` 走队列 + `drain()`，因为 `startLevel` 是 `setTimeout(...,0)` 异步生成 —— 归 P4
-- [ ] **提示高亮目标管**：`flashHint` 目前只把**源管**设为选中态，目标管仅靠文案「点左侧高亮管 → 目标管」暗示；建议同时给目标管加描边/箭头，降低理解成本（`hintPair` 已同时持有 `i,j`，只缺绘制）—— 归 P0
+- [x] **提示高亮目标管**：新增 `hintTarget` 状态，`flashHint` 同时给出**源管**（复用既有蓝光晕 `selected`）与**目标管**（琥珀色虚线呼吸框 + 管口下指箭头），文案改「建议：蓝框管 → 琥珀框管」。配套：`pulseTick` 改为「选中态或提示态任一存在都继续脉动，两者都消失才停 rAF」（避免提示拖着一个永不停的 rAF 耗电）；新增 `clearHint(quiet)` 统一退场（超时 600→1200ms、玩家一操作即退、切关/加管时 `quiet=true` 静默清理旧 `tubeRects`），且超时回调**不抢玩家自己的选中态** —— 归 P0
 - [ ] **提示消耗确认**：`usedHint=true` 直接扣星级，但玩家可能误触；建议提示前弹一次确认或把提示改为"确认后扣 1 金币"（纯便利，非 P2W）—— 归 P1
+- [ ] **提示连按给出下一步**：当前每次点提示只给一步（且要等 1.2s 高亮退场）；可做「连续点提示 = 逐步指引」，但要配合上面的消耗确认，否则变成变相"自动通关"—— 归 P1
+- [ ] **验证桩支持假 clearTimeout**：假定时器必须用 `Map(id→fn)` 并提供真实 `clearTimeout`/`cancelAnimationFrame`，否则游戏里 `clearTimeout(toast._t)`、提示态取消静默失效，测试会**假通过**（本轮已修）—— 归 P4
 - [ ] **过关庆祝动画**：通关瞬间球流入奖杯/星星弹跳强化正反馈（延续程序化绘制，不加资源）—— 归 P1
 - [ ] **无障碍降级**：检测 `prefers-reduced-motion` 时倒球动画降级为瞬移，满足无障碍合规 —— 归 P4
 - [ ] **加管次数上限/记录**：死局「看广告加管」记录已加管数并在 HUD 提示，避免无限制加管破坏体验与步数基准 —— 归 P0

@@ -230,6 +230,8 @@ let DPR = 1, W = 0, H = 0;
 let tubes = [];               // 每管 = 颜色索引数组(底->顶)
 let tubeRects = [];           // 绘制矩形(逻辑坐标)
 let selected = -1;
+let hintTarget = -1;   // 提示态：建议倒入的目标管索引(-1=无)，与 selected(源管) 配合高亮
+let hintPair = null;   // 提示态：[源管, 目标管]，非 null 即提示进行中
 let level = 1, moves = 0, coins = 0;
 let bestStars = {};           // level->stars
 let moveLimit = 0;            // 0=无限
@@ -351,6 +353,7 @@ function startDaily(){
   setTimeout(()=>{
     if(my !== genToken) return;
     tubes = genDaily(ds);
+    clearHint(true);
     selected=-1; moves=0; history=[];
     usedUndo=false; usedHint=false;
     moveLimit = 0;                 // 每日谜题不限步：鼓励反复尝试与分享
@@ -729,6 +732,22 @@ function drawTube(i){
     ctx.moveTo(ax, ay-7); ctx.lineTo(ax-6, ay+3); ctx.lineTo(ax+7, ay+3);
     ctx.closePath(); ctx.fill();
   }
+  // 提示态：目标管加琥珀色虚线呼吸框 + 管口下指箭头（源管已由 selected 的蓝光晕标示）
+  if(hintTarget===i){
+    const pa = pulseAlpha();
+    ctx.save();
+    ctx.setLineDash([7,5]);
+    ctx.strokeStyle = "rgba(255,138,0,"+(0.55+0.40*pa).toFixed(3)+")";
+    ctx.lineWidth = 3;
+    roundRect(r.x-5, r.y-5, r.w+10, r.h+10, 16);
+    ctx.stroke();
+    ctx.restore();
+    const tx = r.x + r.w/2, ty = r.y - 10;
+    ctx.fillStyle = "rgba(255,138,0,"+(0.65+0.35*pa).toFixed(3)+")";
+    ctx.beginPath();
+    ctx.moveTo(tx, ty+7); ctx.lineTo(tx-6, ty-3); ctx.lineTo(tx+7, ty-3);
+    ctx.closePath(); ctx.fill();
+  }
   // 限步关提示：满管锁标
 }
 /* ---------- 选中态呼吸光(持续轻量 rAF) ---------- */
@@ -741,9 +760,17 @@ function startPulse(){
   requestAnimationFrame(pulseTick);
 }
 function pulseTick(){
-  if(selected<0){ pulseOn=false; render(); return; }
+  // 选中态或提示态任一存在都要继续脉动；两者都消失才停 rAF
+  if(selected<0 && hintTarget<0){ pulseOn=false; render(); return; }
   render();
   requestAnimationFrame(pulseTick);
+}
+// 提示态统一出口。quiet=true 用于切关等"马上要重排 layout"的场合，避免用旧 tubeRects 多画一帧
+function clearHint(quiet){
+  clearTimeout(clearHint._t);
+  if(hintTarget<0 && !hintPair) return;
+  hintTarget = -1; hintPair = null;
+  if(!quiet) render();
 }
 // 计算单球在管内的屏幕圆心与半径
 function ballPos(r, idx){
@@ -824,6 +851,7 @@ function onTap(px,py){
     skipAnim();                  // 动画中快速点按：先跳过动画
     if(anyModalOpen()) return;   // 刚弹了胜负/死局层，本次点按到此为止
   }
+  clearHint();                   // 玩家一旦自己操作，提示高亮立即退场
   const i = hitTube(px,py);
   if(i<0) return;
   const t = tubes[i];
@@ -911,6 +939,7 @@ function showDeadlock(){ document.getElementById("deadOverlay").style.display="f
 function hideDeadlock(){ document.getElementById("deadOverlay").style.display="none"; }
 function addTube(){
   tubes.push([]);
+  clearHint(true);   // 加管后索引变化，旧提示可能指向已错位的管子
   layout(); render();
 }
 
@@ -950,6 +979,7 @@ function win(){
 /* ---------- 按钮 ---------- */
 function doUndo(){
   if(animating){ skipAnim(); if(anyModalOpen()) return; }  // 动画中撤销：先跳过动画再回退
+  clearHint();
   if(history.length===0){ toast("无可撤销"); return; }
   tubes = history.pop(); moves=Math.max(0,moves-1); selected=-1;
   usedUndo=true; beep(440,0.05); hideDeadlock(); render();
@@ -963,14 +993,19 @@ document.getElementById("btnHint").onclick=()=>{
     flashHint(r.first);
   } else toast("无可用提示");
 };
-let hintPair=null;
 function flashHint(pair){
   hintPair=pair;
-  const orig=clone(tubes);
-  // 短暂高亮源管
-  selected=pair[0]; startPulse(); render();
-  setTimeout(()=>{ selected=-1; render(); }, 600);
-  toast("建议：点左侧高亮管 → 目标管");
+  // 源管用既有蓝光晕(selected)，目标管用琥珀虚线框(hintTarget)：一眼看清"从哪倒到哪"
+  selected=pair[0];
+  hintTarget=pair[1];
+  startPulse(); render();
+  clearTimeout(flashHint._t);
+  flashHint._t = setTimeout(()=>{
+    hintTarget=-1; hintPair=null;
+    if(selected===pair[0]) selected=-1;   // 玩家若已自己点选，别抢他的选中态
+    render();
+  }, 1200);
+  toast("建议：蓝框管 → 琥珀框管");
 }
 document.getElementById("btnRestart").onclick=()=>{ if(mode==="daily") startDaily(); else startLevel(level); };
 document.getElementById("btnAd").onclick=()=>{
@@ -1180,6 +1215,7 @@ function startLevel(lv){
     if(my !== genToken) return; // 已被更新的关卡取代
     const g = genLevel(lv);
     tubes = g.tubes;
+    clearHint(true);
     selected=-1; moves=0; history=[];
     usedUndo=false; usedHint=false;
     const colors = colorCount(tubes);
