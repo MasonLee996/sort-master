@@ -12,4 +12,9 @@ desktop.ini
 # 日志与临时文件
 *.log
 *.tmp
+*.tmp.js
+.tmp*
+*.bak
+*.orig
+*~
 _site/
