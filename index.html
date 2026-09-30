@@ -132,8 +132,8 @@
           <li><b>什么情况能倒</b>：目标管<b>是空的</b>，或者目标管<b>顶部颜色和源管顶部相同</b>；一次会把源管顶部连着的同色球一起倒完（受目标管剩余空间限制）。</li>
           <li><b>过关条件</b>：把每种颜色全部收进<b>同一根管</b>，做到<b>每根管里只剩一种颜色（或空着）</b>，即过关。</li>
           <li><b>卡住了怎么办</b>：底部「撤销」回退一步；「提示」会直接指出可行的下一步（蓝框 = 源管，琥珀框 = 目标管）。</li>
-          <li><b>步数限制</b>：第 7 关起有步数上限（本关参考解步数 ×1.35），顶部会常显<b>剩余 N 步</b>，剩 ≤5 步时变红告警；用完可看广告 <b>+5 步</b>。前期关卡不限步，看广告改为领金币。</li>
-          <li><b>星级怎么算</b>：<b>基准步数</b> = 本关参考解步数 ×1.15。<b>★★★</b> = 没用任何辅助（撤销 / 提示 / 广告加管）<b>且</b>步数 ≤ 基准；<b>★★</b> = 没用辅助但步数<b>超过基准</b>，<b>或</b>用了辅助但步数 ≤ 基准；<b>★</b> = 其余（用了辅助且超过基准）。星越高金币越多。</li>
+          <li><b>步数限制</b>：第 7 关起有步数上限（本关参考解步数 ×1.35），顶部会常显<b>剩余 N 步</b>，剩 ≤5 步时变红告警；用完可看广告 <b>+5 步</b>（每关最多 2 次，去广告用户免费领取同奖励），或用金币 40 换 5 步。广告加步属辅助操作，本关最高只能拿 ★★。前期关卡不限步，看广告改为领金币。</li>
+          <li><b>星级怎么算</b>：<b>基准步数</b> = 本关参考解步数 ×1.15。<b>★★★</b> = 没用任何辅助（撤销 / 提示 / 广告加管 / 广告加步）<b>且</b>步数 ≤ 基准；<b>★★</b> = 没用辅助但步数<b>超过基准</b>，<b>或</b>用了辅助但步数 ≤ 基准；<b>★</b> = 其余（用了辅助且超过基准）。广告加步（看广告或金币兑换）同样计入辅助操作，本关最高 ★★，护星徽章可免。星越高金币越多。</li>
           <li><b>步数超过基准会掉星</b>：即使一次辅助都没用，只要通关步数<b>超过基准步数</b>，最高也只有 ★★ —— 想拿 ★★★ 得既不碰辅助、又走得足够省。</li>
           <li><b>护星徽章与商城</b>：右侧「🛒 商城」可用金币兑换<b>提示券 / 撤销券 / 护星徽章 / 管身皮肤</b>（只卖便利与外观，<b>不售卖任何数值</b>）。其中<b>护星徽章</b>本关生效：用了辅助也不掉星，仍按步数评星。</li>
           <li><b>加管上限</b>：死局时看广告可加一根空管，<b>每关最多 3 次</b>，用满后只能撤销回退或重开本关 —— 避免无限加管把局面刷成"能过但没意思"。</li>
@@ -156,6 +156,23 @@
         </div>
         <div class="row">
           <button class="act" id="btnDeadRestart" style="width:100%">重开本关</button>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="exhaustedOverlay">
+      <div class="card">
+        <h2>步数用尽</h2>
+        <p>本关剩余步数已用完，但别担心——可以再看广告 / 花金币加 5 步，或直接重开本关。</p>
+        <p class="sub" id="exhaustedAddInfo">—</p>
+        <div class="row">
+          <button class="act" id="btnExhaustedUndo">撤销一步</button>
+          <button class="act gold" id="btnExhaustedAd">看广告 +5 步（剩 2 次）</button>
+        </div>
+        <div class="row">
+          <button class="act" id="btnExhaustedCoin">金币 40 换 5 步</button>
+        </div>
+        <div class="row">
+          <button class="act" id="btnExhaustedRestart" style="width:100%">重开本关</button>
         </div>
       </div>
     </div>
@@ -254,6 +271,7 @@
 
 const CAP = 4;                 // 每管容量
 const MAX_ADD_TUBES = 3;       // 死局加管次数上限(死局出口，防无限制加管破坏体验与步数基准)
+const AD_BOOST_MAX = 2;        // 单关「加步」次数上限(看广告 +5 步 / 金币换步 共用，防无限加步把限步架空)
 const PALETTE = ["#ff5b6e","#3b7bff","#16c784","#ffb020","#a259ff",
                  "#00c2c7","#ff7a45","#7c8cff","#e84393","#2dce89"];
 // 管身皮肤(纯外观，不影响任何数值)。default 的 fill=null → 不填充，保持原观感。
@@ -283,6 +301,8 @@ let history = [];             // 撤销栈
 let usedUndo = false, usedHint = false; // 本关是否用过撤销/提示(影响评级)
 let addedTubes = 0;                     // 本关通过广告加管次数(上限 MAX_ADD_TUBES，同样影响三星评级)
 let baseTubes = 0;                      // 本关生成时的管数(不含广告加管)；撤销时据此把付费加管补回来
+let adStepsUsed = 0;                    // 本关通过「看广告/金币」加步次数(上限 AD_BOOST_MAX，计入辅助→最高★★)
+let boardSnapshot = null;               // 当前关初始题面快照(深拷贝)，供「重开本关」复用同一题面
 let noAds = false;
 let muted = false;
 let hintTickets = 0;          // 提示券库存：使用提示时优先消耗，消耗则该次提示不计入辅助(不掉星)
@@ -411,8 +431,9 @@ function startDaily(){
     shielded = false;              // 护星徽章单关生效：切每日谜题同样归零
     clearHint(true);
     selected=-1; moves=0; history=[];
-    usedUndo=false; usedHint=false; addedTubes=0;
+    usedUndo=false; usedHint=false; addedTubes=0; adStepsUsed=0;
     baseTubes = tubes.length;      // 记录初始管数，撤销时据此补回付费加管
+    snapBoard();                   // 缓存初始题面快照（每日题面按日期定种子，重开=同题面）
     syncDeadAdBtn();
     moveLimit = 0;                 // 每日谜题不限步：鼓励反复尝试与分享
     hideDeadlock(); hideGenMask();
@@ -948,7 +969,7 @@ function skipAnim(){
 }
 // 跳过瞬间可能弹出胜利/死局/广告/生成层，此时本次点按不再透传，避免误触
 function anyModalOpen(){
-  const ids = ["winOverlay","deadOverlay","adOverlay","genOverlay","shopOverlay"];
+  const ids = ["winOverlay","deadOverlay","adOverlay","genOverlay","shopOverlay","exhaustedOverlay"];
   for(let i=0;i<ids.length;i++){
     const el = document.getElementById(ids[i]);
     if(el && el.style.display === "flex") return true;
@@ -971,6 +992,8 @@ function onTap(px,py){
   if(selected===i){ selected=-1; render(); return; }
   // 尝试倒
   if(canPour(tubes,selected,i)){
+    // 力竭拦截：步数用尽且未通关 → 落子前拦截、弹窗给出口；不判负、不污染撤销栈
+    if(moveLimit>0 && moves>=moveLimit && !isWin(tubes)){ showExhausted(); return; }
     pushHistory();
     const from = selected;
     const mv = moveCount(tubes, from, i);
@@ -1039,9 +1062,6 @@ function drawFlyingBalls(){
 function afterMove(){
   if(isWin(tubes)){ win(); return; }
   if(!hasAnyMove(tubes)){ showDeadlock(); return; } // 死局：无路可走
-  if(moveLimit>0 && moves>=moveLimit && !isWin(tubes)){
-    toast("步数用尽，点 +5步/广告");
-  }
 }
 // 死局出口：撤销 / 看广告加管(加一根空管后必有新合法步)
 // 加管按钮态的唯一同步出口：切关/切每日谜题/加管后/开死局弹窗都要调，
@@ -1060,6 +1080,47 @@ function showDeadlock(){
   document.getElementById("deadOverlay").style.display="flex";
 }
 function hideDeadlock(){ document.getElementById("deadOverlay").style.display="none"; }
+// 力竭弹窗（步数用尽、不判负）：看广告 +5 步 / 金币 40 换 5 步 / 重开本关。
+// 按钮态与文案的唯一同步出口：切关/切每日谜题/加步后/开弹窗都要调，否则文案与禁用态脱节。
+function syncExhaustedBtns(){
+  const adBtn = document.getElementById("btnExhaustedAd");
+  const coinBtn = document.getElementById("btnExhaustedCoin");
+  const left = AD_BOOST_MAX - adStepsUsed;
+  if(adBtn){
+    if(left <= 0){ adBtn.textContent = "本关加步已达上限"; adBtn.disabled = true; }
+    else { adBtn.textContent = "看广告 +5 步（剩 " + left + " 次）"; adBtn.disabled = false; }
+  }
+  if(coinBtn){
+    if(left <= 0){ coinBtn.textContent = "本关加步已达上限"; coinBtn.disabled = true; }
+    else if(coins < 40){ coinBtn.textContent = "金币 40 换 5 步（金币不足）"; coinBtn.disabled = true; }
+    else { coinBtn.textContent = "金币 40 换 5 步"; coinBtn.disabled = false; }
+  }
+  const undoBtn = document.getElementById("btnExhaustedUndo");
+  if(undoBtn){
+    if(history.length === 0){ undoBtn.textContent = "无可撤销"; undoBtn.disabled = true; }
+    else { undoBtn.textContent = "撤销一步"; undoBtn.disabled = false; }
+  }
+}
+function showExhausted(){
+  syncExhaustedBtns();
+  document.getElementById("exhaustedOverlay").style.display = "flex";
+}
+function hideExhausted(){ document.getElementById("exhaustedOverlay").style.display = "none"; }
+// 「加步」唯一出口：限步关 +5 步（每关最多 AD_BOOST_MAX 次，看广告与金币兑换共用计数与上限）；
+// 无广告用户直接发放同奖励（不播广告）；非限步关退化为领 +10 金币（维持原行为）。
+function grantAdBoost(){
+  if(moveLimit>0){
+    if(adStepsUsed >= AD_BOOST_MAX){ toast("本关加步次数已用完（"+AD_BOOST_MAX+" 次）"); return false; }
+    adStepsUsed++;
+    moveLimit += 5;
+    syncExhaustedBtns();
+    toast("+5 步已发放");
+    return true;
+  }
+  coins += 10; save();
+  toast("+10 金币(广告)");
+  return true;
+}
 // 返回是否真的加成功：达到上限时拒绝，避免"看完广告却什么也没拿到"
 function addTube(){
   if(addedTubes >= MAX_ADD_TUBES) return false;
@@ -1081,7 +1142,7 @@ function addTube(){
 function starPar(){ return Math.ceil(refSteps * 1.15); }
 function calcStars(){
   const par = starPar();
-  const assisted = !shielded && (usedUndo || usedHint || addedTubes>0);
+  const assisted = !shielded && (usedUndo || usedHint || addedTubes>0 || adStepsUsed>0);
   const withinPar = moves <= par;
   if(!assisted && withinPar) return 3;
   if(withinPar) return 2;        // 有辅助，但步数达标
@@ -1091,7 +1152,7 @@ function calcStars(){
 // 胜利弹窗「为什么不是三星」的说明文案 —— 与 calcStars / help 同为「评级口径三处同步」之一。
 // 铁律：文案里声明的星级上限必须与 calcStars() 的实得结果一致，既不"默默扣星"，也绝不"比实得乐观"。
 function assistNote(){
-  const rawAssist = usedUndo || usedHint || addedTubes>0;
+  const rawAssist = usedUndo || usedHint || addedTubes>0 || adStepsUsed>0;
   const par = starPar();
   const overPar = moves > par;
   if(shielded){
@@ -1106,6 +1167,7 @@ function assistNote(){
   if(rawAssist){
     const parts = [];
     if(addedTubes>0) parts.push("广告加管 "+addedTubes+" 次");
+    if(adStepsUsed>0) parts.push("广告加步 "+adStepsUsed+" 次");
     if(usedUndo) parts.push("撤销");
     if(usedHint) parts.push("提示");
     const used = "本关使用了" + parts.join("、");
@@ -1121,15 +1183,20 @@ function win(){
   beep(880,0.12,"sine",0.07); setTimeout(()=>beep(1175,0.14,"sine",0.07),120);
   haptic([22,40,22]);   // 过关：双段震动正反馈（桌面端静默降级）
   const st = calcStars();
-  let reward = 10 + st*5;
+  let reward;
   let extra = "";
   if(mode==="daily"){
-    if(dailyDoneDate !== dailyDate){   // 每日谜题：每天只发一次首通奖励
+    if(dailyDoneDate !== dailyDate){   // 每日谜题：每天只发一次首通奖励（已有幂等，逻辑不动）
       dailyDoneDate = dailyDate; dailyMoves = moves;
-      reward += DAILY_FIRST_BONUS; extra = "（每日谜题首通）";
+      reward = 10 + st*5 + DAILY_FIRST_BONUS; extra = "（每日谜题首通）";
+    } else {
+      reward = 10 + st*5;
     }
   } else {
-    bestStars[level] = Math.max(bestStars[level]||0, st);
+    // 通关奖励幂等化：首次通关发全额；重复通关只发"星级提升的差额"，避免重玩刷币冲垮商城经济
+    const prevBest = bestStars[level] || 0;
+    bestStars[level] = Math.max(prevBest, st);
+    reward = prevBest === 0 ? (10 + st*5) : Math.max(0, st - prevBest) * 5;
   }
   coins += reward;
   save();
@@ -1137,7 +1204,9 @@ function win(){
   document.getElementById("btnReplay").textContent = mode==="daily" ? "再玩一次" : "重玩";
   document.getElementById("btnNext").textContent   = mode==="daily" ? "回到闯关" : "下一关";
   document.getElementById("winStars").textContent = "★".repeat(st)+"☆".repeat(3-st);
-  document.getElementById("winReward").textContent = "+"+reward+" 金币"+extra;
+  document.getElementById("winReward").textContent = reward === 0
+    ? "+0 金币（已通关过）"
+    : ("+"+reward+" 金币"+extra);
   // 掉星有两条路径：①用了辅助；②没用辅助但步数超基准。两条都必须解释，不能默默扣（护星徽章除外）
   const note = document.getElementById("winNote");
   const nt = assistNote();
@@ -1170,6 +1239,20 @@ function doUndo(){
   else usedUndo=true;
   beep(440,0.05); hideDeadlock(); render();
 }
+// 力竭弹窗的「撤销一步」：与 doUndo 行为对齐，仅把 hideDeadlock 换成 hideExhausted。
+// history 为空时仍 toast「无可撤销」且保持弹窗打开；成功撤销则关闭力竭弹窗（moves 已减 1，重新低于 moveLimit 可继续落子）。
+// 不引入任何新单关状态——usedUndo 已在 restartSameBoard 的归零清单中。
+function doUndoExhausted(){
+  if(animating){ skipAnim(); if(anyModalOpen()) return; }
+  clearHint();
+  if(history.length === 0){ toast("无可撤销"); return; }
+  tubes = history.pop(); moves = Math.max(0, moves - 1); selected = -1;
+  const want = baseTubes + addedTubes;
+  while(tubes.length < want) tubes.push([]);
+  if(undoTickets > 0){ undoTickets--; save(); toast("撤销券 -1"); }
+  else usedUndo = true;
+  beep(440,0.05); hideExhausted(); render();
+}
 document.getElementById("btnUndo").onclick=doUndo;
 document.getElementById("btnHint").onclick=()=>{
   if(animating){ skipAnim(); if(anyModalOpen()) return; }  // 动画中提示：先跳过动画再给建议
@@ -1195,14 +1278,12 @@ function flashHint(pair){
   }, 1200);
   toast("建议：蓝框管 → 琥珀框管");
 }
-document.getElementById("btnRestart").onclick=()=>{ if(mode==="daily") startDaily(); else startLevel(level); };
+document.getElementById("btnRestart").onclick=()=>{ if(mode==="daily") startDaily(); else restartSameBoard(); };
 document.getElementById("btnAd").onclick=()=>{
-  if(noAds){ toast("已去广告"); return; }
-  showAd(()=>{
-    if(moveLimit>0){ moveLimit += 5; toast("+5 步已发放"); }
-    else { coins += 10; save(); toast("+10 金币(广告)"); }
-    render();
-  });
+  // 限步关且已用满加步次数：先看广告也拿不到，直接提示（避免"看完广告却没加步"）
+  if(moveLimit>0 && adStepsUsed>=AD_BOOST_MAX){ toast("本关加步次数已用完（"+AD_BOOST_MAX+" 次）"); return; }
+  if(noAds){ grantAdBoost(); render(); }                 // 去广告卡：免费领取同奖励，不播广告（修缺陷 B）
+  else showAd(()=>{ grantAdBoost(); render(); });
 };
 // 去广告内购：底部独立按钮已移除(与右侧活动栏入口重复)，统一由右侧「🚫去广告」入口调用
 function buyNoAds(){
@@ -1231,7 +1312,7 @@ document.getElementById("signOverlay").addEventListener("click", ev=>{
 });
 document.getElementById("btnReplay").onclick=()=>{
   document.getElementById("winOverlay").style.display="none";
-  if(mode==="daily") startDaily(); else startLevel(level);   // 每日模式：重开同一道每日题面
+  if(mode==="daily") startDaily(); else restartSameBoard();   // 重玩必须回到同一题面，否则星级差额奖励不自洽
 };
 document.getElementById("btnNext").onclick=()=>{
   document.getElementById("winOverlay").style.display="none";
@@ -1302,7 +1383,23 @@ document.getElementById("btnDeadAd").onclick=()=>{
     if(addTube()) toast("已加一根空管 ("+addedTubes+"/"+MAX_ADD_TUBES+")");
   });
 };
-document.getElementById("btnDeadRestart").onclick=()=>{ hideDeadlock(); startLevel(level); };
+document.getElementById("btnDeadRestart").onclick=()=>{ hideDeadlock(); if(mode==="daily") startDaily(); else restartSameBoard(); };
+document.getElementById("btnExhaustedAd").onclick=()=>{
+  if(moveLimit>0 && adStepsUsed>=AD_BOOST_MAX){ toast("本关加步次数已用完"); return; }
+  hideExhausted();
+  if(noAds){ grantAdBoost(); render(); }                 // 去广告卡：免费领取同奖励，不播广告
+  else showAd(()=>{ grantAdBoost(); render(); });
+};
+document.getElementById("btnExhaustedCoin").onclick=()=>{
+  if(adStepsUsed>=AD_BOOST_MAX){ toast("本关加步次数已用完"); return; }
+  if(coins<40){ toast("金币不足"); return; }
+  coins -= 40; save();
+  moveLimit += 5; adStepsUsed++;
+  syncExhaustedBtns(); render();
+  toast("+5 步已发放");
+};
+document.getElementById("btnExhaustedRestart").onclick=()=>{ hideExhausted(); restartSameBoard(); };
+document.getElementById("btnExhaustedUndo").onclick=doUndoExhausted;
 document.getElementById("btnSignClaim").onclick=claimSign;
 
 /* ---------- 活动入口侧栏：留存/活跃(左) + 促销/变现(右) 常驻入口，可滑动，点哪个开哪个 ----------
@@ -1496,6 +1593,27 @@ function showGenMask(lv){
   ov.style.display = "flex";
 }
 function hideGenMask(){ document.getElementById("genOverlay").style.display = "none"; }
+// 重开本关 = 复用当前题面（修缺陷 C：旧实现走 startLevel→重掷一道新题，等于免费换题绕开限步）
+function snapBoard(lv){
+  boardSnapshot = { level: (typeof lv === "number" ? lv : level), tubes: clone(tubes), refSteps: refSteps, baseTubes: baseTubes };
+}
+function restartSameBoard(){
+  if(!boardSnapshot){ startLevel(level); return; }   // 兜底：无快照则退化成重新生成
+  level = boardSnapshot.level;                        // 同步全局关卡号(HUD / 最佳星级口径)
+  tubes = clone(boardSnapshot.tubes);                // 深拷贝，避免与 history/快照共享数组引用
+  refSteps = boardSnapshot.refSteps;
+  baseTubes = boardSnapshot.baseTubes;
+  mode = "normal";
+  shielded = false;                                  // 护星徽章单关生效：重开归零
+  clearHint(true);
+  selected=-1; moves=0; history=[];
+  usedUndo=false; usedHint=false; addedTubes=0; adStepsUsed=0;
+  syncDeadAdBtn();
+  // 限步：与生成时同一基准（同一题面 → 同样 moveLimit）
+  moveLimit = level>6 ? Math.ceil(refSteps * 1.35) : 0;
+  hideDeadlock(); hideExhausted(); hideGenMask();
+  layout(); render();
+}
 function startLevel(lv){
   mode = "normal";              // 线性闯关模式(每日谜题走 startDaily)
   const my = ++genToken;
@@ -1511,8 +1629,9 @@ function startLevel(lv){
     shielded = false;              // 护星徽章单关生效：切关归零
     clearHint(true);
     selected=-1; moves=0; history=[];
-    usedUndo=false; usedHint=false; addedTubes=0;
+    usedUndo=false; usedHint=false; addedTubes=0; adStepsUsed=0;
     baseTubes = tubes.length;      // 记录初始管数，撤销时据此补回付费加管
+    snapBoard(lv);                 // 缓存初始题面快照(含关卡号)，供「重开本关」复用同一题面
     syncDeadAdBtn();
     // 限步：第 7 关起按「参考步数 ×1.35」定上限(向上取整)；第 6 关及以前不限步
     moveLimit = lv>6 ? Math.ceil(refSteps * 1.35) : 0;
