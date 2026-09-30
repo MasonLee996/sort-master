@@ -244,6 +244,7 @@ let moveLimit = 0;            // 0=无限
 let history = [];             // 撤销栈
 let usedUndo = false, usedHint = false; // 本关是否用过撤销/提示(影响评级)
 let addedTubes = 0;                     // 本关通过广告加管次数(上限 MAX_ADD_TUBES，同样影响三星评级)
+let baseTubes = 0;                      // 本关生成时的管数(不含广告加管)；撤销时据此把付费加管补回来
 let noAds = false;
 let muted = false;
 let sawHelp = false;   // 是否已看过过关说明(首次进入自动弹一次)
@@ -365,6 +366,7 @@ function startDaily(){
     clearHint(true);
     selected=-1; moves=0; history=[];
     usedUndo=false; usedHint=false; addedTubes=0;
+    baseTubes = tubes.length;      // 记录初始管数，撤销时据此补回付费加管
     syncDeadAdBtn();
     moveLimit = 0;                 // 每日谜题不限步：鼓励反复尝试与分享
     hideDeadlock(); hideGenMask();
@@ -589,14 +591,17 @@ function randomFill(colors, empties, rnd){
   for(let c=0;c<colors;c++) for(let n=0;n<CAP;n++) balls.push(c);
   // 洗牌
   for(let i=balls.length-1;i>0;i--){ const j=(rnd()*(i+1))|0; [balls[i],balls[j]]=[balls[j],balls[i]]; }
-  let bi=0;
+  // 从「未满管」里等概率取一根放球。
+  // 旧实现是随机试 50 次、失败就把这颗球静默丢掉：一旦丢球，某色只有 CAP-1 颗，
+  // 而 isWin 判定「整管同色」并不要求管满 → 会出现"少一颗也通关"的畸形关卡。
+  // 维护 free 列表后既保证球数恒为 colors*CAP，也省掉了拒绝采样的空转。
+  const free = [];
+  for(let t=0;t<total;t++) free.push(t);
   for(const b of balls){
-    // 随机放进未满管
-    let tries=0;
-    while(tries++<50){
-      const t=(rnd()*total)|0;
-      if(s[t].length<CAP){ s[t].push(b); bi++; break; }
-    }
+    const k = (rnd()*free.length)|0;
+    const t = free[k];
+    s[t].push(b);
+    if(s[t].length >= CAP){ free[k] = free[free.length-1]; free.pop(); }
   }
   return s;
 }
@@ -620,12 +625,18 @@ function fillSolvable(colors, baseEmpties, rnd){
     while(tries < cap){
       tries++;
       const cand = randomFill(colors, empties, rnd);
+      // 必须「还没排好」才算合格题面。isWin 只要每根管"空或单色"即为真，
+      // 所以随机填充有概率直接给出已完成局面(实测 2 色 2 空管时约 3%)：
+      // 这种题面下 win() 不会触发(只在移动后判定)，玩家看到的是"已经摆好却不通关"的坏关。
+      // 第 1、2 关正好是 2 色，等于新手前两关就有 ~3% 概率踩到，故在此拦掉。
+      if(isWin(cand)) continue;
       if(solve(cand)){ s = cand; break; }
     }
   }
-  if(!s){ // 极端兜底：直接给已解状态(理论不会到这)
+  if(!s){ // 极端兜底：从"已排好"退一步，保证既非已完成、也必定有解(1 步可解)
     s = []; for(let c=0;c<colors;c++) s.push(Array(CAP).fill(c));
     for(let e=0;e<empties;e++) s.push([]);
+    if(empties > 0){ const last = s.length-1; s[last].push(s[0].pop()); }
   }
   genStats.tries = tries; genStats.ms = nowMs()-t0;
   genStats.empties = empties; genStats.colors = colors;
@@ -1033,6 +1044,11 @@ function doUndo(){
   clearHint();
   if(history.length===0){ toast("无可撤销"); return; }
   tubes = history.pop(); moves=Math.max(0,moves-1); selected=-1;
+  // 撤销栈里只存「普通移动」，广告加管不入栈 → 直接回填会把玩家看广告换来的空管吞掉，
+  // 而 addedTubes 仍是旧值(白扣一次加管机会、HUD 与实际管数不符)。
+  // 这里按 baseTubes+addedTubes 把付费空管补回管尾(与 addTube 的追加位置一致)。
+  const want = baseTubes + addedTubes;
+  while(tubes.length < want) tubes.push([]);
   usedUndo=true; beep(440,0.05); hideDeadlock(); render();
 }
 document.getElementById("btnUndo").onclick=doUndo;
@@ -1275,6 +1291,7 @@ function startLevel(lv){
     clearHint(true);
     selected=-1; moves=0; history=[];
     usedUndo=false; usedHint=false; addedTubes=0;
+    baseTubes = tubes.length;      // 记录初始管数，撤销时据此补回付费加管
     syncDeadAdBtn();
     const colors = colorCount(tubes);
     moveLimit = lv>6 ? colors*8 : 0; // 后期加入限步挑战(颜色数*8)
