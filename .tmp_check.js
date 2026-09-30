@@ -1,222 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="0aYyxIvlaQrDdGuyPo8NtR">
-<head data-page-node-id="kbd89g7cQrhE8dqAIYPSIO">
-<meta charset="UTF-8" data-page-node-id="kZGYIpuXNHACWlbJINNtpo" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" data-page-node-id="FeIbdG5iAltfzju7I34Q7P" />
-<title>收纳大师 · 纯AI小游戏Demo</title>
-<style>
-  :root{
-    --bg:#f3f5f9; --panel:#ffffff; --ink:#1f2733; --sub:#6b7686;
-    --line:#e4e8ef; --accent:#3b7bff; --accent2:#16c784; --warn:#ff5b6e;
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;}
-  #app{position:fixed;inset:0;max-width:520px;margin:0 auto;display:flex;flex-direction:column;height:100%;width:100%;}
-  header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--panel);
-    border-bottom:1px solid var(--line);}
-  .stat{flex:1;text-align:center;}
-  .stat .k{font-size:11px;color:var(--sub);}
-  .stat .v{font-size:16px;font-weight:700;}
-  #stage{flex:1;position:relative;overflow:hidden;}
-  canvas{display:block;width:100%;height:100%;touch-action:none;}
-  footer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px;
-    background:var(--panel);border-top:1px solid var(--line);}
-  button.act{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;
-    padding:10px 4px;font-size:13px;font-weight:600;cursor:pointer;}
-  button.act:active{transform:scale(.96);}
-  button.act.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
-  button.act.gold{background:var(--accent2);color:#fff;border-color:var(--accent2);}
-  button.act[disabled]{opacity:.4;pointer-events:none;filter:grayscale(.3);}
-  .overlay{position:fixed;inset:0;background:rgba(20,28,40,.55);display:none;
-    align-items:center;justify-content:center;z-index:50;}
-  .card{background:#fff;border-radius:18px;padding:22px;width:80%;max-width:300px;text-align:center;
-    box-shadow:0 20px 60px rgba(0,0,0,.25);}
-  .card h2{margin:0 0 6px;font-size:22px;}
-  .card p{margin:4px 0;color:var(--sub);font-size:14px;}
-  .card .row{display:flex;gap:10px;margin-top:16px;}
-  .card button{flex:1;}
-  .stars{font-size:26px;letter-spacing:4px;margin:8px 0;}
-  .adbox{width:100%;height:120px;border-radius:12px;background:linear-gradient(135deg,#3b7bff,#16c784);
-    color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;}
-  .toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(31,39,51,.92);
-    color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .25s;z-index:30;pointer-events:none;}
-  .toast.show{opacity:1;}
-  button.help{width:36px;height:36px;flex:0 0 36px;border-radius:50%;border:1px solid var(--line);
-    background:#fff;color:var(--ink);font-size:17px;font-weight:800;cursor:pointer;line-height:1;}
-  .rules{margin:6px 0 0;padding-left:20px;text-align:left;}
-  .rules li{margin:9px 0;font-size:14px;line-height:1.65;}
-  .rules b{color:#3b7bff;}
-  #helpCard{max-height:82%;overflow-y:auto;}
-  /* 活动入口侧栏(留存/活跃/促销)：左右两列常驻入口，可滑动，点哪个开哪个 */
-  .rail{position:absolute;top:50%;transform:translateY(-50%);width:42px;max-height:66%;
-    display:flex;flex-direction:column;gap:8px;padding:2px;overflow-y:auto;overflow-x:hidden;
-    z-index:10;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none;}
-  .rail::-webkit-scrollbar{display:none;}
-  #railL{left:3px;} #railR{right:3px;}
-  .rail button{flex:0 0 auto;position:relative;border:1px solid var(--line);background:rgba(255,255,255,.94);
-    border-radius:12px;padding:5px 0 4px;font-size:9px;line-height:1.15;font-weight:600;color:var(--ink);
-    cursor:pointer;box-shadow:0 2px 6px rgba(20,28,40,.06);}
-  .rail button:active{transform:scale(.94);}
-  .rail button .ico{display:block;font-size:16px;line-height:1.25;}
-  .rail button .nm{display:block;}
-  .rail button .dot{display:none;position:absolute;top:3px;right:4px;width:7px;height:7px;border-radius:50%;
-    background:var(--warn);box-shadow:0 0 0 2px #fff;}
-  .rail button.hot{border-color:#ffd591;background:linear-gradient(180deg,#fff7e6,#fff);}
-  /* 分享界面(GitHub Pages 链接 + 程序化海报) */
-  #shareCard{max-height:88%;overflow-y:auto;}
-  .linkbox{margin:10px 0;padding:10px;border:1px dashed var(--accent);border-radius:10px;font-size:12px;
-    color:var(--accent);word-break:break-all;background:#f5f8ff;cursor:pointer;line-height:1.5;}
-  .linkbox:active{transform:scale(.99);}
-  .sub{color:var(--sub);font-size:12px;margin:4px 0;}
-  #sharePoster{width:100%;border-radius:12px;border:1px solid var(--line);display:block;}
-  #sharePosterRow{display:none;margin-top:12px;}
-  #shareSaveRow{display:none;}
-</style>
-</head>
-<body data-page-node-id="xrHFwxEzDOcBTRu1ZtLn4o">
-<div id="app" data-page-node-id="3DWMeZha7KskK08E6nUM8y">
-  <header data-page-node-id="bbglBJjc10wNVMgmtIBgrB">
-    <div class="stat" data-page-node-id="Gu67lDU7eDfzKpPo8kYDbF"><div class="k" data-page-node-id="LC4smy6DEPsC4c5H0VIu1k">关卡</div><div class="v" id="hudLevel" data-page-node-id="JHre3lq7bGkSiyC1cjmsT3">1</div></div>
-    <div class="stat" data-page-node-id="XPAX08h1AEuDbBU1sHPaoI"><div class="k" data-page-node-id="yoKyn5WqIs0Zu8MQw6tG65">步数</div><div class="v" id="hudMoves" data-page-node-id="a7zqDaXp5E9RtzP9OiCwfa">0</div></div>
-    <div class="stat" data-page-node-id="UMTcscImHsqxZlVStVkSou"><div class="k" data-page-node-id="FlWDS91P8mSvYCyk9CD5eG">金币</div><div class="v" id="hudCoins" data-page-node-id="9gfEFHBv0o3ZKpAtXazeU2">0</div></div>
-    <div class="stat" data-page-node-id="GW76x8zXFaCHZN7qBSFQdv"><div class="k" data-page-node-id="lZk4dhpxC0zvj5yoYi6Pag">最佳</div><div class="v" id="hudStars" data-page-node-id="o8L8dofYU1bCIKjLcHNrCE">☆</div></div>
-    <div class="stat"><div class="k">加管</div><div class="v" id="hudAdd">0/3</div></div>
-    <button class="help" id="btnHelp" title="过关说明">?</button>
-  </header>
-  <div id="stage" data-page-node-id="rsCGCgwHCixI1bK1vTJFuS">
-    <canvas id="cv" data-page-node-id="ovNtxGr5EpihWQ7HaYcz6N"></canvas>
-    <div class="toast" id="toast" data-page-node-id="VOCuGg16r0fybKffYcOoaH"></div>
-    <div class="rail" id="railL"></div>
-    <div class="rail" id="railR"></div>
-    <div class="overlay" id="winOverlay" data-page-node-id="qujpHVNR06mmQGptBOd9PM">
-      <div class="card" data-page-node-id="VnDkWskkhMocmkbSM3mSNy">
-        <h2 data-page-node-id="45xJJ4a1joBkJdPhDHXsC1">过关！</h2>
-        <div class="stars" id="winStars" data-page-node-id="6hBLy1V3hP8yGERK5XkuDW">★★★</div>
-        <p id="winReward" data-page-node-id="RsgBPJbj4CFG3FvbvNvjBK">+0 金币</p>
-        <p class="sub" id="winNote" style="display:none"></p>
-        <div class="row" data-page-node-id="cR8ukCmg2ncPgpzABY5kaF">
-          <button class="act" id="btnReplay" data-page-node-id="1SCskFCeP330n0h2MO90fy">重玩</button>
-          <button class="act primary" id="btnNext" data-page-node-id="yMF5RZpUSRMc1aRECiXpkJ">下一关</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="adOverlay" data-page-node-id="4Jbq0t79AqP2Gu3tscmZuv">
-      <div class="card" data-page-node-id="1wiZ0c2MOLo3BD7IAE51RJ">
-        <h2 id="adTitle" data-page-node-id="mhswRCBOvlB9onx23DOKco">广告</h2>
-        <div class="adbox" id="adBox" data-page-node-id="T4IKx4EVif5QoVVq5UsG5b">广告播放中…</div>
-        <p id="adHint" style="margin-top:10px" data-page-node-id="yFrHt1zhpLL6Y3YN4uAp6E">（Demo 模拟，真实环境替换为 wx.createRewardedVideoAd）</p>
-      </div>
-    </div>
-    <div class="overlay" id="helpOverlay">
-      <div class="card" id="helpCard">
-        <h2>过关说明</h2>
-        <ol class="rules">
-          <li><b>怎么操作</b>：点一根「源管」选中（变蓝高亮）→ 再点「目标管」倒过去。想换选择，点回原管取消。</li>
-          <li><b>什么情况能倒</b>：目标管<b>是空的</b>，或者目标管<b>顶部颜色和源管顶部相同</b>；一次会把源管顶部连着的同色球一起倒完（受目标管剩余空间限制）。</li>
-          <li><b>过关条件</b>：把每种颜色全部收进<b>同一根管</b>，做到<b>每根管里只剩一种颜色（或空着）</b>，即过关。</li>
-          <li><b>卡住了怎么办</b>：底部「撤销」回退一步；「提示」会直接指出可行的下一步（蓝框 = 源管，琥珀框 = 目标管）。</li>
-          <li><b>步数限制</b>：第 7 关起有步数上限，用完可看广告 <b>+5 步</b>；前期关卡不限步，看广告改为领金币。</li>
-          <li><b>星级怎么算</b>：<b>没用到任何辅助</b>（撤销 / 提示 / 广告加管）= ★★★；用了辅助但步数没超标准 = ★★；否则 = ★。星越高金币越多。</li>
-          <li><b>加管上限</b>：死局时看广告可加一根空管，<b>每关最多 3 次</b>，用满后只能撤销回退或重开本关 —— 避免无限加管把局面刷成"能过但没意思"。</li>
-          <li><b>难度怎么递进</b>：关卡越高，颜色越多、管越多、空管更少，逐步变难。</li>
-          <li><b>左右两侧的小按钮</b>：常驻入口栏（可上下滑动）。左侧是<b>签到</b>（连续 7 天阶梯奖励）、<b>每日谜题</b>（每天一道全服同一题面，不限步，首通 +60 金币）、<b>分享</b>（复制链接 / 生成海报，每日首次 +30 金币）；右侧是<b>商城 / 首充 / 月卡 / 去广告</b>等。点哪个开哪个。</li>
-        </ol>
-        <div class="row">
-          <button class="act primary" id="btnHelpClose">知道了</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="deadOverlay">
-      <div class="card">
-        <h2>无路可走</h2>
-        <p>当前局面已经没有可倒的球了。</p>
-        <p class="sub" id="deadAddInfo">—</p>
-        <div class="row">
-          <button class="act" id="btnDeadUndo">撤销一步</button>
-          <button class="act gold" id="btnDeadAd">看广告加管</button>
-        </div>
-        <div class="row">
-          <button class="act" id="btnDeadRestart" style="width:100%">重开本关</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="genOverlay">
-      <div class="card">
-        <h2>生成中…</h2>
-        <p>正在生成 <span id="genLv">第 1 关</span>（保证可解）</p>
-        <div class="row" style="justify-content:center">
-          <div class="adbox" style="height:60px;font-size:14px">关卡生成中</div>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="signOverlay">
-      <div class="card">
-        <h2>每日签到</h2>
-        <p>已连续签到 <span id="signStreak">1</span> 天</p>
-        <div class="row" id="signGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:10px 0"></div>
-        <p>今日奖励：<span id="signReward">+20</span> 金币</p>
-        <div class="row">
-          <button class="act primary" id="btnSignClaim" style="width:100%">领取</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="dailyOverlay">
-      <div class="card">
-        <h2>🧩 每日谜题</h2>
-        <p id="dailyDate">—</p>
-        <p id="dailyInfo">今日题面：—</p>
-        <p id="dailyStatus">今日尚未挑战</p>
-        <div class="row">
-          <button class="act" id="btnDailyClose">关闭</button>
-          <button class="act primary" id="btnDailyStart">开始挑战</button>
-        </div>
-        <div class="row" id="dailyExitRow" style="display:none">
-          <button class="act" id="btnDailyExit" style="width:100%">退出每日，回到闯关</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="shareOverlay">
-      <div class="card" id="shareCard">
-        <h2>📤 分享给好友</h2>
-        <p class="sub">把链接发给好友，点开即玩，无需下载</p>
-        <div class="linkbox" id="shareLinkBox" title="点击复制">—</div>
-        <div class="row">
-          <button class="act" id="btnShareCopy">复制链接</button>
-          <button class="act primary" id="btnSharePoster">生成海报</button>
-        </div>
-        <div id="sharePosterRow"><img id="sharePoster" alt="分享海报" /></div>
-        <div class="row" id="shareSaveRow">
-          <button class="act gold" id="btnShareSave" style="width:100%">保存海报图片</button>
-        </div>
-        <p class="sub" id="shareReward">每日首次分享 +30 金币</p>
-        <p class="sub">（Web 端为复制链接 / 保存海报；接入微信小游戏后替换为 wx.shareAppMessage）</p>
-        <div class="row">
-          <button class="act" id="btnShareClose" style="width:100%">关闭</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="entryOverlay">
-      <div class="card">
-        <h2><span id="entryIco">🎁</span> <span id="entryTitle">功能</span></h2>
-        <p id="entryDesc">敬请期待</p>
-        <div class="row">
-          <button class="act primary" id="btnEntryClose" style="width:100%">知道了</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <footer data-page-node-id="0pgnYKD0Pmm85Cwzbf4gNh">
-    <button class="act" id="btnUndo" data-page-node-id="KbItC3FqdD9FWlpz9DD2eH">撤销</button>
-    <button class="act" id="btnHint" data-page-node-id="c9TJXXOfMxmvzWPpMCXsUj">提示</button>
-    <button class="act" id="btnRestart" data-page-node-id="KTTDqnw5BluOxniAfScKrX">重开</button>
-    <button class="act gold" id="btnAd" data-page-node-id="Huh4GdDkWwmSlYQMQuCagr">+5步/广告</button>
-  </footer>
-  <footer style="grid-template-columns:1fr;border-top:none;padding-top:0;" data-page-node-id="jV7C0psjL7Y9uDTlfu2D1A">
-    <button class="act" id="btnMute" data-page-node-id="oLVCMTDUNMqYZXYLT6GhqV">🔊 音效</button>
-  </footer>
-</div>
-<script>
+
 "use strict";
 /* ============================================================
    收纳大师 Sort Puzzle —— 纯AI生成 · 零美术依赖 · 程序化关卡
@@ -224,7 +6,8 @@
    ============================================================ */
 
 const CAP = 4;                 // 每管容量
-const MAX_ADD_TUBES = 3;       // 死局加管次数上限(死局出口，防无限制加管破坏体验与步数基准)
+const TUBE_ADD_MAX = 3;        // 单关最多可通过广告加管次数(死局出口，防无限加管破坏体验与步数基准)
+const MAX_ADD_TUBES = 3;       // 死局加管次数上限(防无限制加管破坏步数基准)
 const PALETTE = ["#ff5b6e","#3b7bff","#16c784","#ffb020","#a259ff",
                  "#00c2c7","#ff7a45","#7c8cff","#e84393","#2dce89"];
 
@@ -243,7 +26,7 @@ let bestStars = {};           // level->stars
 let moveLimit = 0;            // 0=无限
 let history = [];             // 撤销栈
 let usedUndo = false, usedHint = false; // 本关是否用过撤销/提示(影响评级)
-let addedTubes = 0;                     // 本关通过广告加管次数(上限 MAX_ADD_TUBES，同样影响三星评级)
+let tubesAdded = 0;                     // 本关通过广告加管次数(上限 TUBE_ADD_MAX，同样影响三星评级)
 let noAds = false;
 let muted = false;
 let sawHelp = false;   // 是否已看过过关说明(首次进入自动弹一次)
@@ -362,8 +145,7 @@ function startDaily(){
     tubes = genDaily(ds);
     clearHint(true);
     selected=-1; moves=0; history=[];
-    usedUndo=false; usedHint=false; addedTubes=0;
-    syncDeadAdBtn();
+    usedUndo=false; usedHint=false; tubesAdded=0;
     moveLimit = 0;                 // 每日谜题不限步：鼓励反复尝试与分享
     hideDeadlock(); hideGenMask();
     layout(); render();
@@ -817,8 +599,6 @@ function render(){
   document.getElementById("hudLevel").textContent = mode==="daily" ? "每日" : level;
   document.getElementById("hudMoves").textContent = moveLimit>0 ? (moves+"/"+moveLimit) : moves;
   document.getElementById("hudCoins").textContent = coins;
-  // 加管记录常驻 HUD：让"这是辅助操作、本关还剩几次"一直可见，而不是只在死局弹窗里出现一次
-  document.getElementById("hudAdd").textContent = addedTubes + "/" + MAX_ADD_TUBES;
   document.getElementById("hudStars").textContent = mode==="daily"
     ? (dailyDoneDate===dateStr() ? "★" : "☆")
     : (bestStars[level] ? "★".repeat(bestStars[level]) : "☆");
@@ -945,37 +725,18 @@ function afterMove(){
   }
 }
 // 死局出口：撤销 / 看广告加管(加一根空管后必有新合法步)
-// 加管按钮态的唯一同步出口：切关/切每日谜题/加管后/开死局弹窗都要调，
-// 否则按钮的文案与禁用态会和真实次数脱节（例如切关后仍显示"已用完"）。
-function syncDeadAdBtn(){
-  const left = MAX_ADD_TUBES - addedTubes;
-  const btn = document.getElementById("btnDeadAd");
-  btn.textContent = left > 0 ? ("看广告加管（剩 " + left + " 次）") : "加管次数已用完";
-  btn.disabled = (left <= 0);   // 置灰样式由 CSS button.act[disabled] 统一处理
-  document.getElementById("deadAddInfo").textContent = left > 0
-    ? ("本关已加管 " + addedTubes + " 次，还剩 " + left + " 次。加管属辅助操作，本关最高只能拿 ★★。")
-    : ("本关加管已达上限（" + MAX_ADD_TUBES + " 次已用完），只能撤销回退或重开本关。");
-}
-function showDeadlock(){
-  syncDeadAdBtn();
-  document.getElementById("deadOverlay").style.display="flex";
-}
+function showDeadlock(){ document.getElementById("deadOverlay").style.display="flex"; }
 function hideDeadlock(){ document.getElementById("deadOverlay").style.display="none"; }
-// 返回是否真的加成功：达到上限时拒绝，避免"看完广告却什么也没拿到"
 function addTube(){
-  if(addedTubes >= MAX_ADD_TUBES) return false;
-  addedTubes++;
   tubes.push([]);
   clearHint(true);   // 加管后索引变化，旧提示可能指向已错位的管子
-  syncDeadAdBtn();
   layout(); render();
-  return true;
 }
 
 /* ---------- 胜负与奖励 ---------- */
 function calcStars(){
   const par = colorCount(tubes) * 8;   // 合理步数基准
-  if(!usedUndo && !usedHint && addedTubes===0) return 3;  // 零辅助 = 满星
+  if(!usedUndo && !usedHint) return 3;  // 零辅助 = 满星
   if(moves <= par) return 2;
   return 1;
 }
@@ -1000,12 +761,6 @@ function win(){
   document.getElementById("btnNext").textContent   = mode==="daily" ? "回到闯关" : "下一关";
   document.getElementById("winStars").textContent = "★".repeat(st)+"☆".repeat(3-st);
   document.getElementById("winReward").textContent = "+"+reward+" 金币"+extra;
-  // 用了广告加管就拿不到三星：得让玩家知道"为什么不是三星"，不能默默扣
-  const note = document.getElementById("winNote");
-  if(addedTubes > 0){
-    note.textContent = "本关用了 "+addedTubes+" 次广告加管，属辅助操作，最高 ★★。";
-    note.style.display = "";
-  } else note.style.display = "none";
   document.getElementById("winOverlay").style.display="flex";
   refreshRail();
   render();
@@ -1134,13 +889,9 @@ document.getElementById("shareOverlay").addEventListener("click", ev=>{
 });
 document.getElementById("btnDeadUndo").onclick=doUndo;
 document.getElementById("btnDeadAd").onclick=()=>{
-  // 必须在放广告之前判上限：否则玩家看完广告才被告知加不了，是明显的体验事故
-  if(addedTubes >= MAX_ADD_TUBES){ toast("本关加管次数已用完（"+MAX_ADD_TUBES+" 次）"); return; }
+  if(noAds){ addTube(); hideDeadlock(); toast("已加一根空管"); return; }
   hideDeadlock(); // 先让出顶层，避免遮挡广告层
-  if(noAds){ addTube(); toast("已加一根空管 ("+addedTubes+"/"+MAX_ADD_TUBES+")"); return; }
-  showAd(()=>{
-    if(addTube()) toast("已加一根空管 ("+addedTubes+"/"+MAX_ADD_TUBES+")");
-  });
+  showAd(()=>{ addTube(); });
 };
 document.getElementById("btnDeadRestart").onclick=()=>{ hideDeadlock(); startLevel(level); };
 document.getElementById("btnSignClaim").onclick=claimSign;
@@ -1256,8 +1007,7 @@ function startLevel(lv){
     tubes = g.tubes;
     clearHint(true);
     selected=-1; moves=0; history=[];
-    usedUndo=false; usedHint=false; addedTubes=0;
-    syncDeadAdBtn();
+    usedUndo=false; usedHint=false;
     const colors = colorCount(tubes);
     moveLimit = lv>6 ? colors*8 : 0; // 后期加入限步挑战(颜色数*8)
     hideDeadlock(); hideGenMask();
@@ -1292,6 +1042,3 @@ let __bootTries = 0;
     requestAnimationFrame(bootSize);
   }
 })();
-</script>
-</body>
-</html>
