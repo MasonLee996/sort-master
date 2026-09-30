@@ -72,13 +72,23 @@
   #sharePoster{width:100%;border-radius:12px;border:1px solid var(--line);display:block;}
   #sharePosterRow{display:none;margin-top:12px;}
   #shareSaveRow{display:none;}
+  /* 道具商城(金币兑换)：列表可滚动，按钮沿用 .act / .act[disabled] 约定 */
+  #shopCard{max-height:88%;overflow-y:auto;}
+  .shoprow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eef1f6;text-align:left;}
+  .shoprow:last-child{border-bottom:none;}
+  .shoprow .info{flex:1;min-width:0;}
+  .shoprow .nm{font-size:14px;font-weight:700;}
+  .shoprow .ds{font-size:11px;color:var(--sub);line-height:1.45;}
+  .shoprow button.act{flex:0 0 86px;font-size:12px;padding:8px 2px;}
+  /* 限步关剩余步数告警：仅复用现有槽位，不新增常驻 stat */
+  .v.warn{color:var(--warn);}
 </style>
 </head>
 <body data-page-node-id="xrHFwxEzDOcBTRu1ZtLn4o">
 <div id="app" data-page-node-id="3DWMeZha7KskK08E6nUM8y">
   <header data-page-node-id="bbglBJjc10wNVMgmtIBgrB">
     <div class="stat" data-page-node-id="Gu67lDU7eDfzKpPo8kYDbF"><div class="k" data-page-node-id="LC4smy6DEPsC4c5H0VIu1k">关卡</div><div class="v" id="hudLevel" data-page-node-id="JHre3lq7bGkSiyC1cjmsT3">1</div></div>
-    <div class="stat" data-page-node-id="XPAX08h1AEuDbBU1sHPaoI"><div class="k" data-page-node-id="yoKyn5WqIs0Zu8MQw6tG65">步数</div><div class="v" id="hudMoves" data-page-node-id="a7zqDaXp5E9RtzP9OiCwfa">0</div></div>
+    <div class="stat" data-page-node-id="XPAX08h1AEuDbBU1sHPaoI"><div class="k" id="hudMovesK" data-page-node-id="yoKyn5WqIs0Zu8MQw6tG65">步数</div><div class="v" id="hudMoves" data-page-node-id="a7zqDaXp5E9RtzP9OiCwfa">0</div></div>
     <div class="stat" data-page-node-id="UMTcscImHsqxZlVStVkSou"><div class="k" data-page-node-id="FlWDS91P8mSvYCyk9CD5eG">金币</div><div class="v" id="hudCoins" data-page-node-id="9gfEFHBv0o3ZKpAtXazeU2">0</div></div>
     <div class="stat" data-page-node-id="GW76x8zXFaCHZN7qBSFQdv"><div class="k" data-page-node-id="lZk4dhpxC0zvj5yoYi6Pag">最佳</div><div class="v" id="hudStars" data-page-node-id="o8L8dofYU1bCIKjLcHNrCE">☆</div></div>
     <div class="stat"><div class="k">加管</div><div class="v" id="hudAdd">0/3</div></div>
@@ -99,6 +109,12 @@
           <button class="act" id="btnReplay" data-page-node-id="1SCskFCeP330n0h2MO90fy">重玩</button>
           <button class="act primary" id="btnNext" data-page-node-id="yMF5RZpUSRMc1aRECiXpkJ">下一关</button>
         </div>
+        <div id="winShareRow" style="display:none;margin-top:12px">
+          <div class="linkbox" id="winShareText" title="点击复制">—</div>
+          <div class="row">
+            <button class="act primary" id="btnWinShare" style="width:100%">复制成绩分享</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="overlay" id="adOverlay" data-page-node-id="4Jbq0t79AqP2Gu3tscmZuv">
@@ -116,11 +132,13 @@
           <li><b>什么情况能倒</b>：目标管<b>是空的</b>，或者目标管<b>顶部颜色和源管顶部相同</b>；一次会把源管顶部连着的同色球一起倒完（受目标管剩余空间限制）。</li>
           <li><b>过关条件</b>：把每种颜色全部收进<b>同一根管</b>，做到<b>每根管里只剩一种颜色（或空着）</b>，即过关。</li>
           <li><b>卡住了怎么办</b>：底部「撤销」回退一步；「提示」会直接指出可行的下一步（蓝框 = 源管，琥珀框 = 目标管）。</li>
-          <li><b>步数限制</b>：第 7 关起有步数上限，用完可看广告 <b>+5 步</b>；前期关卡不限步，看广告改为领金币。</li>
-          <li><b>星级怎么算</b>：<b>没用到任何辅助</b>（撤销 / 提示 / 广告加管）= ★★★；用了辅助但步数没超标准 = ★★；否则 = ★。星越高金币越多。</li>
+          <li><b>步数限制</b>：第 7 关起有步数上限（本关参考解步数 ×1.35），顶部会常显<b>剩余 N 步</b>，剩 ≤5 步时变红告警；用完可看广告 <b>+5 步</b>。前期关卡不限步，看广告改为领金币。</li>
+          <li><b>星级怎么算</b>：<b>基准步数</b> = 本关参考解步数 ×1.15。<b>★★★</b> = 没用任何辅助（撤销 / 提示 / 广告加管）<b>且</b>步数 ≤ 基准；<b>★★</b> = 没用辅助但步数<b>超过基准</b>，<b>或</b>用了辅助但步数 ≤ 基准；<b>★</b> = 其余（用了辅助且超过基准）。星越高金币越多。</li>
+          <li><b>步数超过基准会掉星</b>：即使一次辅助都没用，只要通关步数<b>超过基准步数</b>，最高也只有 ★★ —— 想拿 ★★★ 得既不碰辅助、又走得足够省。</li>
+          <li><b>护星徽章与商城</b>：右侧「🛒 商城」可用金币兑换<b>提示券 / 撤销券 / 护星徽章 / 管身皮肤</b>（只卖便利与外观，<b>不售卖任何数值</b>）。其中<b>护星徽章</b>本关生效：用了辅助也不掉星，仍按步数评星。</li>
           <li><b>加管上限</b>：死局时看广告可加一根空管，<b>每关最多 3 次</b>，用满后只能撤销回退或重开本关 —— 避免无限加管把局面刷成"能过但没意思"。</li>
           <li><b>难度怎么递进</b>：关卡越高，颜色越多、管越多、空管更少，逐步变难。</li>
-          <li><b>左右两侧的小按钮</b>：常驻入口栏（可上下滑动）。左侧是<b>签到</b>（连续 7 天阶梯奖励）、<b>每日谜题</b>（每天一道全服同一题面，不限步，首通 +60 金币）、<b>分享</b>（复制链接 / 生成海报，每日首次 +30 金币）；右侧是<b>商城 / 首充 / 月卡 / 去广告</b>等。点哪个开哪个。</li>
+          <li><b>左右两侧的小按钮</b>：常驻入口栏（可上下滑动）。左侧是<b>签到</b>（连续 7 天阶梯奖励）、<b>每日谜题</b>（每天一道全服同一题面，不限步，首通 +60 金币）、<b>分享</b>（复制链接 / 生成海报，每日首次 +30 金币）；右侧是<b>商城</b>（金币兑换道具）、<b>首充 / 月卡 / 去广告</b>等。点哪个开哪个。</li>
         </ol>
         <div class="row">
           <button class="act primary" id="btnHelpClose">知道了</button>
@@ -205,6 +223,17 @@
         </div>
       </div>
     </div>
+    <div class="overlay" id="shopOverlay">
+      <div class="card" id="shopCard">
+        <h2>🛒 道具商城</h2>
+        <p class="sub">用金币兑换便利与外观，不售卖任何数值</p>
+        <div id="shopList"></div>
+        <p class="sub" id="shopCoins">持有金币：0</p>
+        <div class="row">
+          <button class="act primary" id="btnShopClose" style="width:100%">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
   <footer data-page-node-id="0pgnYKD0Pmm85Cwzbf4gNh">
     <button class="act" id="btnUndo" data-page-node-id="KbItC3FqdD9FWlpz9DD2eH">撤销</button>
@@ -227,6 +256,13 @@ const CAP = 4;                 // 每管容量
 const MAX_ADD_TUBES = 3;       // 死局加管次数上限(死局出口，防无限制加管破坏体验与步数基准)
 const PALETTE = ["#ff5b6e","#3b7bff","#16c784","#ffb020","#a259ff",
                  "#00c2c7","#ff7a45","#7c8cff","#e84393","#2dce89"];
+// 管身皮肤(纯外观，不影响任何数值)。default 的 fill=null → 不填充，保持原观感。
+const SKINS = {
+  default: {name:"默认管身", fill:null,                   stroke:"#cdd5e0"},
+  frosted: {name:"磨砂管身", fill:"#eef2f8",              stroke:"#c3ccd9"},
+  glass:   {name:"玻璃管身", fill:"rgba(210,226,255,.35)", stroke:"#9fbcf2"},
+  wood:    {name:"木纹管身", fill:"#f6ead8",              stroke:"#c9a678"}
+};
 
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
@@ -241,12 +277,18 @@ let hintPair = null;   // 提示态：[源管, 目标管]，非 null 即提示�
 let level = 1, moves = 0, coins = 0;
 let bestStars = {};           // level->stars
 let moveLimit = 0;            // 0=无限
+let refSteps = 0;             // 本关参考解步数(生成时 DFS 首解长度)：限步与星级 par 的基准
+let shielded = false;         // 本关是否持有护星徽章(单关生效，startLevel/startDaily 均归零)
 let history = [];             // 撤销栈
 let usedUndo = false, usedHint = false; // 本关是否用过撤销/提示(影响评级)
 let addedTubes = 0;                     // 本关通过广告加管次数(上限 MAX_ADD_TUBES，同样影响三星评级)
 let baseTubes = 0;                      // 本关生成时的管数(不含广告加管)；撤销时据此把付费加管补回来
 let noAds = false;
 let muted = false;
+let hintTickets = 0;          // 提示券库存：使用提示时优先消耗，消耗则该次提示不计入辅助(不掉星)
+let undoTickets = 0;          // 撤销券库存：撤销时优先消耗，消耗则该次撤销不计入辅助(不掉星)
+let skinsOwned = {};          // 已拥有的管身皮肤 id 集合(纯外观)
+let skinEquipped = "default"; // 当前装备的管身皮肤 id
 let sawHelp = false;   // 是否已看过过关说明(首次进入自动弹一次)
 // 每日签到(连续签到, localStorage 持久化)
 let loginDate = "";        // 上次登录日期(本地 YYYY-M-D)
@@ -275,13 +317,15 @@ function load(){
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
     level = s.level || 1; coins = s.coins || 0;
     bestStars = s.bestStars || {}; noAds = !!s.noAds; muted = !!s.muted; sawHelp = !!s.sawHelp;
+    hintTickets = s.hintTickets || 0; undoTickets = s.undoTickets || 0;
+    skinsOwned = s.skinsOwned || {}; skinEquipped = s.skinEquipped || "default";
     loginDate = s.loginDate||""; signStreak = s.signStreak||0; signClaimedDate = s.signClaimedDate||"";
     dailyDoneDate = s.dailyDoneDate||""; dailyMoves = s.dailyMoves||0;
     shareClaimedDate = s.shareClaimedDate||"";
   }catch(e){}
 }
 function save(){
-  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({level,coins,bestStars,noAds,muted,sawHelp,loginDate,signStreak,signClaimedDate,dailyDoneDate,dailyMoves,shareClaimedDate})); }catch(e){}
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({level,coins,bestStars,noAds,muted,sawHelp,hintTickets,undoTickets,skinsOwned,skinEquipped,loginDate,signStreak,signClaimedDate,dailyDoneDate,dailyMoves,shareClaimedDate})); }catch(e){}
 }
 
 /* ---------- 每日签到(连续签到, 7 天阶梯) ---------- */
@@ -363,6 +407,8 @@ function startDaily(){
   const build = ()=>{
     if(my !== genToken) return;
     tubes = genDaily(ds);
+    refSteps = genStats.refSteps;  // 每日题面的参考步数(生成时记录)，供星级基准使用
+    shielded = false;              // 护星徽章单关生效：切每日谜题同样归零
     clearHint(true);
     selected=-1; moves=0; history=[];
     usedUndo=false; usedHint=false; addedTubes=0;
@@ -383,6 +429,12 @@ function shareUrl(){
     if(/^https?:/.test(location.protocol)) return location.href.split("#")[0].split("?")[0];
   }catch(e){}
   return GH_PAGES_URL;
+}
+// 每日谜题成绩文案：日期 + 步数（每日模式胜利弹窗展示，链接一律走 shareUrl()）
+function dailyShareText(){
+  const ds = dailyDate || dateStr();
+  const p = parseDate(ds);
+  return (p.getMonth()+1) + " 月 " + p.getDate() + " 日每日谜题，我用 " + moves + " 步通关，来比比？";
 }
 function fbCopy(t){   // 无剪贴板权限时的兜底(document.execCommand)
   try{
@@ -549,14 +601,17 @@ function hasAnyMove(s){
   return false;
 }
 
-// DFS 求解器：返回 [步数, 首步] 或 null。复用为 Hint。
+// DFS 求解器：返回 {first, steps} 或 null。
+//   first = 当前局面的合法首步(提示用，语义/取值与旧版完全一致)
+//   steps = 该解的步数(DFS 首解上界)。生成时据此记录关卡参考步数 refSteps，作为限步/星级基准。
 function solve(start, capNodes=200000){
   const visited = new Set();
   let nodes = 0;
   let bestFirst = null;
+  let bestSteps = 0;   // 首次到达胜利局面时的深度 = 该解的步数
   function dfs(s, depth){
     if(nodes++ > capNodes) return false;
-    if(isWin(s)) return true;
+    if(isWin(s)){ bestSteps = depth; return true; }
     const k = key(s);
     if(visited.has(k)) return false;
     visited.add(k);
@@ -578,7 +633,7 @@ function solve(start, capNodes=200000){
     return false;
   }
   const ok = dfs(clone(start),0);
-  return ok ? {first:bestFirst} : null;
+  return ok ? {first:bestFirst, steps:bestSteps} : null;
 }
 
 function randomFill(colors, empties, rnd){
@@ -613,12 +668,12 @@ function randomFill(colors, empties, rnd){
 const GEN_STAGES = [40, 120, 400];  // 各阶段的"累计尝试数"上限；空管数依次为 base+0/+1/+2
 const GEN_MASK_MS = 60;             // 上次生成超过该耗时，下次才先出遮罩让出主线程
 let genMsLast = 0;                  // 上一次生成耗时(ms)，用于自适应决定要不要遮罩
-// 最近一次生成的诊断信息(尝试次数/耗时/最终空管数与颜色数)，便于定位高阶关卡卡顿
-const genStats = { tries: 0, ms: 0, empties: 0, colors: 0 };
+// 最近一次生成的诊断信息(尝试次数/耗时/最终空管数、颜色数与参考解步数)，便于定位高阶关卡卡顿
+const genStats = { tries: 0, ms: 0, empties: 0, colors: 0, refSteps: 0 };
 // 随机填充 + solve 校验，保证可解；rnd 可选(每日谜题注入日期种子)
 function fillSolvable(colors, baseEmpties, rnd){
   const t0 = nowMs();
-  let tries = 0, empties = baseEmpties, s = null;
+  let tries = 0, empties = baseEmpties, s = null, ref = 0;
   for(let st=0; st<GEN_STAGES.length && !s; st++){
     empties = baseEmpties + st;
     const cap = GEN_STAGES[st];
@@ -630,22 +685,26 @@ function fillSolvable(colors, baseEmpties, rnd){
       // 这种题面下 win() 不会触发(只在移动后判定)，玩家看到的是"已经摆好却不通关"的坏关。
       // 第 1、2 关正好是 2 色，等于新手前两关就有 ~3% 概率踩到，故在此拦掉。
       if(isWin(cand)) continue;
-      if(solve(cand)){ s = cand; break; }
+      const sol = solve(cand);
+      if(sol){ s = cand; ref = Math.max(1, sol.steps||0); break; }  // 记录该题面的参考解步数
     }
   }
   if(!s){ // 极端兜底：从"已排好"退一步，保证既非已完成、也必定有解(1 步可解)
     s = []; for(let c=0;c<colors;c++) s.push(Array(CAP).fill(c));
     for(let e=0;e<empties;e++) s.push([]);
     if(empties > 0){ const last = s.length-1; s[last].push(s[0].pop()); }
+    ref = 1;
   }
   genStats.tries = tries; genStats.ms = nowMs()-t0;
   genStats.empties = empties; genStats.colors = colors;
+  genStats.refSteps = ref;
   genMsLast = genStats.ms;
   return s;
 }
 function genLevel(lv){
   const colors = Math.min(2 + Math.floor((lv-1)/2), PALETTE.length);
-  return {tubes: fillSolvable(colors, lv>10 ? 1 : 2)};
+  const g = fillSolvable(colors, lv>10 ? 1 : 2);
+  return {tubes: g, refSteps: genStats.refSteps};   // 一并带上参考步数，供限步/星级基准使用
 }
 function colorCount(s){
   const set = new Set();
@@ -736,9 +795,8 @@ function drawTube(i){
     ctx.fillStyle = "rgba(59,123,255,"+(0.10+0.18*pa).toFixed(3)+")";
     roundRect(r.x-6,r.y-6,r.w+12,r.h+12,16); ctx.fill();
   }
-  // 管身
-  ctx.fillStyle = "#ffffff";
-  ctx.strokeStyle = selected===i ? "#3b7bff" : "#cdd5e0";
+  // 管身（皮肤为纯外观：仅改变管身底色/描边，不影响任何数值）
+  const sk = SKINS[skinEquipped] || SKINS.default;
   ctx.lineWidth = 3;
   // 圆角底，顶部开口
   const rad = 14;
@@ -749,6 +807,8 @@ function drawTube(i){
   ctx.lineTo(r.x+r.w-rad, r.y+r.h);
   ctx.quadraticCurveTo(r.x+r.w, r.y+r.h, r.x+r.w, r.y+r.h-rad);
   ctx.lineTo(r.x+r.w, r.y);
+  if(sk.fill){ ctx.fillStyle = sk.fill; ctx.fill(); }   // 默认皮肤不填充，保持原观感
+  ctx.strokeStyle = selected===i ? "#3b7bff" : sk.stroke;
   ctx.stroke();
   // 球
   const skip = (anim && anim.to===i) ? anim.cnt : 0; // 飞行中的球由动画层绘制，此处隐藏
@@ -842,7 +902,19 @@ function render(){
   ctx.fillText("点选管子搬运同色 · 每管只剩一种颜色即过关", W/2, H-8);
   ctx.textAlign="left";
   document.getElementById("hudLevel").textContent = mode==="daily" ? "每日" : level;
-  document.getElementById("hudMoves").textContent = moveLimit>0 ? (moves+"/"+moveLimit) : moves;
+  // 限步关：复用「步数」槽位常显剩余步数(不新增常驻 stat，避免 340px 窄屏挤爆)；剩余 ≤5 高亮告警
+  const kMoves = document.getElementById("hudMovesK");
+  const vMoves = document.getElementById("hudMoves");
+  if(moveLimit>0){
+    const left = Math.max(0, moveLimit - moves);
+    if(kMoves) kMoves.textContent = "剩余";
+    vMoves.textContent = String(left);
+    vMoves.className = left<=5 ? "v warn" : "v";
+  } else {
+    if(kMoves) kMoves.textContent = "步数";
+    vMoves.textContent = String(moves);
+    vMoves.className = "v";
+  }
   document.getElementById("hudCoins").textContent = coins;
   // 加管记录常驻 HUD：让"这是辅助操作、本关还剩几次"一直可见，而不是只在死局弹窗里出现一次
   document.getElementById("hudAdd").textContent = addedTubes + "/" + MAX_ADD_TUBES;
@@ -876,7 +948,7 @@ function skipAnim(){
 }
 // 跳过瞬间可能弹出胜利/死局/广告/生成层，此时本次点按不再透传，避免误触
 function anyModalOpen(){
-  const ids = ["winOverlay","deadOverlay","adOverlay","genOverlay"];
+  const ids = ["winOverlay","deadOverlay","adOverlay","genOverlay","shopOverlay"];
   for(let i=0;i<ids.length;i++){
     const el = document.getElementById(ids[i]);
     if(el && el.style.display === "flex") return true;
@@ -1000,11 +1072,50 @@ function addTube(){
 }
 
 /* ---------- 胜负与奖励 ---------- */
+// 星级基准 par = 本关参考解步数 ×1.15(向上取整)。
+// ★ 全项目唯一出口：calcStars() 与 winNote(assistNote) 共用，禁止别处再算一遍。
+//   ★★★ = 未用辅助 且 步数 ≤ par
+//   ★★  = 未用辅助但超 par，或 用了辅助但步数 ≤ par
+//   ★   = 其余(用了辅助 且 超 par)
+// 护星徽章(shielded)：本关使用辅助不计入掉星，仍按「零辅助」口径评星。
+function starPar(){ return Math.ceil(refSteps * 1.15); }
 function calcStars(){
-  const par = colorCount(tubes) * 8;   // 合理步数基准
-  if(!usedUndo && !usedHint && addedTubes===0) return 3;  // 零辅助 = 满星
-  if(moves <= par) return 2;
-  return 1;
+  const par = starPar();
+  const assisted = !shielded && (usedUndo || usedHint || addedTubes>0);
+  const withinPar = moves <= par;
+  if(!assisted && withinPar) return 3;
+  if(withinPar) return 2;        // 有辅助，但步数达标
+  if(!assisted) return 2;        // 无辅助，但步数超标
+  return 1;                      // 有辅助且超标
+}
+// 胜利弹窗「为什么不是三星」的说明文案 —— 与 calcStars / help 同为「评级口径三处同步」之一。
+// 铁律：文案里声明的星级上限必须与 calcStars() 的实得结果一致，既不"默默扣星"，也绝不"比实得乐观"。
+function assistNote(){
+  const rawAssist = usedUndo || usedHint || addedTubes>0;
+  const par = starPar();
+  const overPar = moves > par;
+  if(shielded){
+    // 徽章：辅助不计入掉星 → 上限只受步数影响
+    if(!rawAssist) return overPar
+      ? ("本关用了 " + moves + " 步，超过基准 " + par + " 步，最高 ★★。")
+      : "";
+    return overPar
+      ? ("本关使用了护星徽章：辅助不计入掉星；但步数 " + moves + " 步超过基准 " + par + " 步，按步数最高 ★★。")
+      : "本关使用了护星徽章：辅助操作不计入掉星，仍按步数评星。";
+  }
+  if(rawAssist){
+    const parts = [];
+    if(addedTubes>0) parts.push("广告加管 "+addedTubes+" 次");
+    if(usedUndo) parts.push("撤销");
+    if(usedHint) parts.push("提示");
+    const used = "本关使用了" + parts.join("、");
+    // 非护星 + 有辅助：达标 → ★★；超基准 → 辅助与超步「双因叠加」，实得 ★，上限必须写 ★
+    return overPar
+      ? (used + "，且步数 " + moves + " 步超过基准 " + par + " 步，两个原因叠加，最高 ★。")
+      : (used + "，属辅助操作，最高 ★★。");
+  }
+  // 无辅助：唯一会掉星的就是"步数超基准"，必须说清楚差多少
+  return overPar ? ("本关用了 " + moves + " 步，超过基准 " + par + " 步，最高 ★★。") : "";
 }
 function win(){
   beep(880,0.12,"sine",0.07); setTimeout(()=>beep(1175,0.14,"sine",0.07),120);
@@ -1027,12 +1138,17 @@ function win(){
   document.getElementById("btnNext").textContent   = mode==="daily" ? "回到闯关" : "下一关";
   document.getElementById("winStars").textContent = "★".repeat(st)+"☆".repeat(3-st);
   document.getElementById("winReward").textContent = "+"+reward+" 金币"+extra;
-  // 用了广告加管就拿不到三星：得让玩家知道"为什么不是三星"，不能默默扣
+  // 掉星有两条路径：①用了辅助；②没用辅助但步数超基准。两条都必须解释，不能默默扣（护星徽章除外）
   const note = document.getElementById("winNote");
-  if(addedTubes > 0){
-    note.textContent = "本关用了 "+addedTubes+" 次广告加管，属辅助操作，最高 ★★。";
-    note.style.display = "";
-  } else note.style.display = "none";
+  const nt = assistNote();
+  if(nt){ note.textContent = nt; note.style.display = ""; }
+  else { note.textContent = ""; note.style.display = "none"; }
+  // 每日谜题：生成「日期 + 步数」成绩文案，供一键复制分享（仅每日模式出现）
+  const srow = document.getElementById("winShareRow");
+  if(mode==="daily"){
+    document.getElementById("winShareText").textContent = dailyShareText();
+    if(srow) srow.style.display = "";
+  } else if(srow) srow.style.display = "none";
   document.getElementById("winOverlay").style.display="flex";
   refreshRail();
   render();
@@ -1049,14 +1165,19 @@ function doUndo(){
   // 这里按 baseTubes+addedTubes 把付费空管补回管尾(与 addTube 的追加位置一致)。
   const want = baseTubes + addedTubes;
   while(tubes.length < want) tubes.push([]);
-  usedUndo=true; beep(440,0.05); hideDeadlock(); render();
+  // 有撤销券则优先消耗(该次撤销不计入辅助)；否则按旧口径置 usedUndo
+  if(undoTickets > 0){ undoTickets--; save(); toast("撤销券 -1"); }
+  else usedUndo=true;
+  beep(440,0.05); hideDeadlock(); render();
 }
 document.getElementById("btnUndo").onclick=doUndo;
 document.getElementById("btnHint").onclick=()=>{
   if(animating){ skipAnim(); if(anyModalOpen()) return; }  // 动画中提示：先跳过动画再给建议
   const r = solve(clone(tubes));
   if(r && r.first){
-    usedHint=true;
+    // 有提示券则优先消耗(该次提示不计入辅助)；否则按旧口径置 usedHint
+    if(hintTickets > 0){ hintTickets--; save(); toast("提示券 -1"); }
+    else usedHint=true;
     flashHint(r.first);
   } else toast("无可用提示");
 };
@@ -1117,6 +1238,13 @@ document.getElementById("btnNext").onclick=()=>{
   if(mode==="daily"){ mode="normal"; startLevel(level); }     // 每日模式：退出每日回到闯关
   else { level++; save(); startLevel(level); }
 };
+// 每日成绩分享：一键复制「日期 + 步数」文案 + 链接(链接一律走 shareUrl()，不硬编码域名)
+document.getElementById("btnWinShare").onclick=()=>{
+  copyText(dailyShareText() + " " + shareUrl()).then(ok=>{
+    toast(ok ? "成绩已复制，去分享给好友吧" : "复制失败，请长按上方文字手动复制");
+  });
+};
+document.getElementById("winShareText").onclick=()=>{ document.getElementById("btnWinShare").click(); };
 /* 每日谜题入口的三个按钮 */
 document.getElementById("btnDailyStart").onclick=()=>{
   document.getElementById("dailyOverlay").style.display="none";
@@ -1246,6 +1374,7 @@ function openEntry(id){
   if(id==="sign"){ showSign(); return; }                                 // 每日签到(已实现)
   if(id==="daily"){ showDaily(); return; }                                // 每日谜题(已实现)
   if(id==="share"){ showShare(); return; }                                // 分享给好友(已实现)
+  if(id==="shop"){ showShop(); return; }                                  // 道具商城(金币兑换，已实现)
   if(id==="noads"){ buyNoAds(); return; }                                 // 去广告内购(已实现)
   showEntry(id);                                                          // 其余：预告
 }
@@ -1253,6 +1382,96 @@ buildRail();
 document.getElementById("btnEntryClose").onclick=()=>{
   document.getElementById("entryOverlay").style.display="none";
 };
+
+/* ---------- 道具商城(金币兑换)：只兑换「便利 + 外观」，不售卖任何数值、
+   不提供任何「付费购买金币」入口、无抽奖/开箱式发放 —— 合规硬边界 ---------- */
+const SHOP_GOODS = [
+  {id:"hint1",         ico:"💡", name:"提示券 ×1",      price:30,  kind:"hint",   d:"点提示时优先消耗，该次提示不计入辅助"},
+  {id:"undo5",         ico:"↩️", name:"撤销券 ×5",      price:100, kind:"undo",   d:"撤销时优先消耗，该次撤销不计入辅助"},
+  {id:"shield",        ico:"🛡️", name:"护星徽章 ×1",    price:150, kind:"shield", d:"本关辅助操作不计入掉星，仍按步数评星"},
+  {id:"skin_frosted",  ico:"🎨", name:"皮肤：磨砂管身",  price:200, kind:"skin", skin:"frosted", d:"纯外观，不影响任何数值"},
+  {id:"skin_glass",    ico:"🎨", name:"皮肤：玻璃管身",  price:350, kind:"skin", skin:"glass",   d:"纯外观，不影响任何数值"},
+  {id:"skin_wood",     ico:"🎨", name:"皮肤：木纹管身",  price:500, kind:"skin", skin:"wood",    d:"纯外观，不影响任何数值"}
+];
+const shopBtns = {}, shopDescs = {};
+// 单个商品的按钮文案与可用态(金币不足/已拥有/已生效 → 置灰)
+function shopBtnState(g){
+  if(g.kind==="shield"){
+    if(shielded) return {label:"已生效", disabled:true, reason:"已生效"};
+    return {label:g.price+" 金币", disabled:coins<g.price, reason:"金币不足"};
+  }
+  if(g.kind==="skin"){
+    if(skinsOwned[g.skin]) return skinEquipped===g.skin
+      ? {label:"使用中", disabled:true, reason:""}
+      : {label:"使用", disabled:false, reason:""};
+    return {label:g.price+" 金币", disabled:coins<g.price, reason:"金币不足"};
+  }
+  return {label:g.price+" 金币", disabled:coins<g.price, reason:"金币不足"};
+}
+// 库存描述(随现实状态刷新)
+function shopStockText(g){
+  if(g.kind==="hint")  return "已持有 " + hintTickets + " 张";
+  if(g.kind==="undo")  return "已持有 " + undoTickets + " 张";
+  if(g.kind==="shield") return shielded ? "本关护星已生效" : "未使用";
+  if(g.kind==="skin")  return skinsOwned[g.skin] ? "已拥有" : "未拥有";
+  return "";
+}
+function renderShop(){
+  const box = document.getElementById("shopList");
+  if(!box) return;
+  box.textContent = "";
+  SHOP_GOODS.forEach(function(g){
+    const row = document.createElement("div");
+    row.className = "shoprow";
+    row.setAttribute("data-good", g.id);
+    const info = document.createElement("div");
+    info.className = "info";
+    const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = g.ico + " " + g.name;
+    const ds = document.createElement("div"); ds.className = "ds";
+    const st = shopBtnState(g);
+    ds.textContent = g.d + " · " + shopStockText(g) +
+      ((st.disabled && st.reason==="金币不足") ? "（" + st.reason + "）" : "");
+    info.appendChild(nm); info.appendChild(ds);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "act" + (g.kind==="shield" ? " gold" : "");
+    btn.textContent = st.label;
+    btn.disabled = st.disabled;      // 置灰样式沿用 button.act[disabled]
+    btn.setAttribute("data-buy", g.id);
+    btn.addEventListener("click", function(){ buyGoods(g.id); });
+    row.appendChild(info); row.appendChild(btn);
+    box.appendChild(row);
+    shopBtns[g.id] = btn; shopDescs[g.id] = ds;
+  });
+  const c = document.getElementById("shopCoins");
+  if(c) c.textContent = "持有金币：" + coins;
+}
+function showShop(){ renderShop(); document.getElementById("shopOverlay").style.display = "flex"; }
+function closeShop(){ document.getElementById("shopOverlay").style.display = "none"; }
+// 购买/使用：金币不足或已达上限时按钮已置灰，这里再做一次防御性校验
+function buyGoods(id){
+  const g = SHOP_GOODS.filter(function(x){return x.id===id;})[0];
+  if(!g) return false;
+  if(g.kind==="shield" && shielded){ toast("本关护星徽章已生效"); return false; }
+  if(g.kind==="skin" && skinsOwned[g.skin]){   // 已拥有：免费切换
+    if(skinEquipped!==g.skin){ skinEquipped=g.skin; save(); renderShop(); render(); toast("已切换皮肤：" + SKINS[g.skin].name); }
+    return true;
+  }
+  if(coins < g.price){ toast("金币不足"); return false; }
+  coins -= g.price;                            // ★ 真正的金币消耗出口
+  if(g.kind==="hint") hintTickets += 1;
+  else if(g.kind==="undo") undoTickets += 5;
+  else if(g.kind==="shield") shielded = true;
+  else if(g.kind==="skin"){ skinsOwned[g.skin] = true; skinEquipped = g.skin; }
+  save();                                      // ★ 扣减后立即存档
+  renderShop(); render();
+  toast("已购买：" + g.name);
+  return true;
+}
+document.getElementById("btnShopClose").onclick=closeShop;
+document.getElementById("shopOverlay").addEventListener("click", ev=>{
+  if(ev.target.id==="shopOverlay") closeShop();   // 点遮罩也能关，杜绝「进得去出不来」
+});
 
 /* ---------- 广告/内购 占位(真实环境替换为小游戏SDK) ---------- */
 function showAd(done){
@@ -1288,13 +1507,15 @@ function startLevel(lv){
     if(my !== genToken) return; // 已被更新的关卡取代
     const g = genLevel(lv);
     tubes = g.tubes;
+    refSteps = g.refSteps;         // 本关参考解步数(生成时随题面一起记录)
+    shielded = false;              // 护星徽章单关生效：切关归零
     clearHint(true);
     selected=-1; moves=0; history=[];
     usedUndo=false; usedHint=false; addedTubes=0;
     baseTubes = tubes.length;      // 记录初始管数，撤销时据此补回付费加管
     syncDeadAdBtn();
-    const colors = colorCount(tubes);
-    moveLimit = lv>6 ? colors*8 : 0; // 后期加入限步挑战(颜色数*8)
+    // 限步：第 7 关起按「参考步数 ×1.35」定上限(向上取整)；第 6 关及以前不限步
+    moveLimit = lv>6 ? Math.ceil(refSteps * 1.35) : 0;
     hideDeadlock(); hideGenMask();
     layout(); render();
   };
