@@ -120,6 +120,8 @@
 
 94. 推送 GitHub 仓库（用户重连连接器后打通）：直连连接器 MCP 端点（本会话工具索引失效，改用 `CODEBUDDY_MCP_CONFIG` 里的 URL+token 发 JSON-RPC），并让 Python 直接读磁盘文件构造 `push_files` 载荷 → 21 个文件 / 130KB 一次性推送成功（commit `fe5eff3`，远端 `main` 与本地内容 diff 为空）；本地 `git fetch` + `reset --mixed origin/main` 对齐。Actions 首次运行**失败在 `Setup Pages`**：`configure-pages@v5` 的 `enablement: true` 无权自行创建 Pages 站点 → 移除该参数并加一次性开启说明。→ 补 P4 在线发布，远端文件树 25 项已复核；**余一步人工操作**：Settings → Pages → Source 选「GitHub Actions」。
 
+95. GitHub Pages 上线：用户把 Pages 的 Source 改为「GitHub Actions」后 `has_pages` 由 false 转 true（本轮关键经验：**判 Pages 是否开启要看 `has_pages` 字段，`GET /repos/.../pages` 首次构建前恒 404**）；不劳用户点重跑，改为推送 README 部署说明（`ba9e740`）顺带触发 workflow → **全 6 步 success**，线上 **https://masonlee996.github.io/sort-master/** 返回 HTTP 200 / 53,280 字节，内容与本地 `index.html` **逐字节一致**。分享链路自动衔接：`shareUrl()` 线上取 `location.href`，回落常量与真实地址相同。→ P1/P4 在线发布收口；**遗留**：分享海报只做过程序化验证、未做真机视觉核对（本机未装 agent-browser）。
+
 ---
-迭代累计：94 轮（设计 50 + 升级 20 + 执行 24）。
+迭代累计：95 轮（设计 50 + 升级 20 + 执行 25）。
 达成条件：① 迭代 >50 ✅ ② 四约束全覆盖、硬伤已修、多尺寸渲染验证通过、纯AI 已实证可产出可运行游戏 ✅

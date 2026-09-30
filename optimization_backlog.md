@@ -54,7 +54,8 @@
 - [x] **弹窗模态层级**：所有 `.overlay` 改 `position:fixed` + `z-index:50`，覆盖全屏含 header/footer 按钮，避免弹窗（胜利/死局/说明/签到/广告/生成中）期间误触底部按钮（原仅在 `#stage` 内，footer 仍可点）
 - [x] **GitHub Pages 在线发布**：仓库 `MasonLee996/sort-master`（public，默认分支 main）已推送成功 —— **21 个文件 / 130KB / 单次 commit `fe5eff3`**，本地 `git fetch` 后已对齐（工作区 vs 远端 diff 为空）。新增 `.github/workflows/pages.yml`（只把 `index.html` 作为站点产物上传 → 文档不暴露）+ `README.md`/`LICENSE`/`.gitignore`（排除 `.workbuddy/`）/`.gitattributes`
   - 踩坑记录：① 连接器最初是只读授权，`create_repository`/`create_or_update_file` 均 403 → 用户重连后恢复写权限；② 本会话 GitHub MCP 工具索引失效，改用**直连连接器端点（JSON-RPC over `CODEBUDDY_MCP_CONFIG` 里的 URL+token）**并让 Python 直接读磁盘文件构造 `push_files` 载荷，绕开了在对话里内联 130KB 内容；③ Actions 首次运行**失败在 `Setup Pages` 步骤**：`actions/configure-pages@v5` 的 `enablement: true` 需要 `GITHUB_TOKEN` 之外的权限，无法自行创建 Pages 站点 → 已移除该参数并加注释，**需人工一次性开启**：Settings → Pages → Source 选「GitHub Actions」
-- [ ] **Pages 首次开启（待用户操作）**：仓库 Settings → Pages → Build and deployment → Source 选「GitHub Actions」，然后把失败的 workflow 重跑一次；开启后访问地址为 `https://masonlee996.github.io/sort-master/` —— 归 P1（当前唯一阻塞项）
+- [x] **Pages 首次开启 + 上线**：用户在 Settings → Pages 把 Source 设为「GitHub Actions」（`has_pages` 由 false → true）；随后由推送 README 更新触发部署，workflow **全 6 步 success**。🎮 **线上地址：https://masonlee996.github.io/sort-master/** —— HTTP 200、53,280 字节、`text/html`，内容与本地 `index.html` **逐字节一致**。判断 Pages 是否开启请认 `has_pages` 字段，`GET /repos/.../pages` 在首次构建前恒 404，不可作为依据
+- [ ] **线上真机验证（分享海报视觉）**：`makePoster()` 目前仅通过程序化验证（产物为合法 PNG dataURL、可重复调用），**未做真机视觉核对**；需装 `agent-browser`（~500MB Chromium）后打开线上页面 → 点侧栏「分享」→「生成海报」→ 截图核对排版（重点：链接框自适应字号那一段）—— 归 P1
 - [ ] **自绘二维码进海报**：当前海报只有链接文本，好友无法扫码。需零依赖自绘 QR（byte 模式 + Reed-Solomon 纠错，约 250 行）嵌入海报右下角 —— 归 P1
 - [ ] **海报模板多样化**：按成绩（步数/星级）切换海报文案与配色，鼓励"晒成绩"式分享 —— 归 P1
 
