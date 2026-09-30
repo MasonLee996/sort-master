@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>《收纳大师》策划评审 · 成长曲线与经济系统</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#fff; --ink:#1b1f2a; --ink2:#5b6478; --line:#e3e7f0;
+  --blue:#3b7bff; --red:#e5484d; --amber:#f5a524; --green:#16a34a; --violet:#a259ff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 64px}
+header{border-bottom:3px solid var(--ink);padding-bottom:14px;margin-bottom:24px}
+h1{font-size:25px;margin:0 0 8px;letter-spacing:.2px}
+.meta{color:var(--ink2);font-size:13px}
+h2{font-size:19px;margin:36px 0 12px;padding-left:11px;border-left:5px solid var(--blue)}
+h3{font-size:16px;margin:22px 0 8px;color:#2b3242}
+p{margin:8px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0;
+  box-shadow:0 1px 2px rgba(20,30,60,.04)}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;background:var(--card)}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#eef1f8;font-weight:600;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.hot td{background:#fff5f5}
+tr.warn td{background:#fffaf0}
+code{background:#eef1f8;border-radius:4px;padding:1px 5px;font-size:13px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+.p0{background:#ffe3e4;color:#b3191e}
+.p1{background:#fff0d6;color:#9a6200}
+.ok{background:#e3f6e9;color:#0f7a37}
+.bad{background:#ffe3e4;color:#b3191e}
+.na{background:#eceef4;color:#5b6478}
+.big{font-size:15px;font-weight:600}
+.callout{border-left:4px solid var(--blue);background:#f2f6ff;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+.callout.warn{border-color:var(--amber);background:#fffaf0}
+.callout.bad{border-color:var(--red);background:#fff5f5}
+.callout.ok{border-color:var(--green);background:#f1fbf4}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:16px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi .n{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .l{font-size:12.5px;color:var(--ink2);margin-top:4px}
+.kpi .sub{font-size:12px;color:var(--ink2);margin-top:6px}
+ul,ol{margin:8px 0 8px 22px;padding:0}
+li{margin:5px 0}
+.chart{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0}
+svg{display:block;width:100%;height:auto}
+footer{margin-top:44px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink2);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>《收纳大师》策划评审 · 成长曲线与经济系统</h1>
+  <div class="meta">版本 v1 · 2026-09-30 · 评审视角：核心循环 → 难度曲线 → 经济闭环 → 留存 → 变现 → 上架合规<br>
+  数据来源：对 <code>index.html</code> 的静态核算 + 用游戏自带求解器实测（探针可复算，见文末）· 策划文档，不含工程实现</div>
+</header>
+
+<div class="callout bad">
+  <span class="big">一句话诊断：</span>这个游戏「能玩、手感好、可解性有保证」，但<b>「玩完就完了」</b>——
+  缺少长线目标、缺少经济闭环，以及一条真正会变难的难度曲线。
+</div>
+
+<h2>0 · 结论先行：Top 5 策划级问题</h2>
+
+<table>
+<thead><tr><th style="width:44px">#</th><th>问题</th><th>实测证据</th><th>玩家感受</th><th style="width:64px">优先级</th></tr></thead>
+<tbody>
+<tr class="hot">
+  <td class="num">1</td>
+  <td><b>难度曲线在第 17 关彻底「躺平」</b></td>
+  <td>色数公式 <code>min(2+⌊(lv-1)/2⌋, 10)</code>，而调色板只有 <b>10</b> 色 → <b>第 17 关起每关参数完全相同</b>（10 色 / 2 空管 / 40 球 / 12 管 / 限步 80）。40 关里有 <b>24 关（60%）</b>难度零增长，且 <code>level++</code> 无上限</td>
+  <td>玩到 17 关就等于通关了，后面全是重复劳动 → <b>弃游高发点</b></td>
+  <td><span class="pill p0">P0</span></td>
+</tr>
+<tr class="hot">
+  <td class="num">2</td>
+  <td><b>金币只有进水、没有出水</b></td>
+  <td>全代码 <code>coins</code> 只有 <code>+=</code>，<b>零个 <code>-=</code></b>。签到(20~100/天)、每日首通 60、分享 30、广告 10、通关 10+5×星级 全在发币；唯一设定好的消耗出口（道具商城）点开是「功能预告」弹窗</td>
+  <td>数字一直涨但<b>毫无意义</b>，签到/分享的驱动力第二天就失效</td>
+  <td><span class="pill p0">P0</span></td>
+</tr>
+<tr class="warn">
+  <td class="num">3</td>
+  <td><b>「限步挑战」形同虚设</b></td>
+  <td>用游戏自带求解器实测 12 个限步关：<b>实际解步数 32~47，限步却给 80</b>，余量 33~48 步（限步是真实需求的 <b>1.7~2.5 倍</b>）</td>
+  <td>永远碰不到上限 → 该机制<b>既没压力、也没广告触点</b>，纯占位</td>
+  <td><span class="pill p1">P1</span></td>
+</tr>
+<tr class="warn">
+  <td class="num">4</td>
+  <td><b>「空管数」这个难度旋钮在高关静默失效</b></td>
+  <td>生成器对 lv&gt;10 要求 1 空管，但分阶段兜底在生成不出可解题时会自动加空管 → 实测 <b>lv16/17/20/25/30/35/40 全部拿到 2 空管</b>（只有 lv12/14 保住 1 空管）</td>
+  <td>策划以为「11 关后变难了」，系统却<b>悄悄把难度调回去</b></td>
+  <td><span class="pill p1">P1</span></td>
+</tr>
+<tr class="warn">
+  <td class="num">5</td>
+  <td><b>星级门槛过松，没有区分度</b></td>
+  <td><code>par = 色数 × 8</code>（10 色 = 80 步），而实测解步数只有 32~47 → 只要不用辅助必然三星，<code>moves ≤ par</code> 的二星分支几乎永不触发</td>
+  <td>星级退化成「用没用辅助」的二值开关 → <b>刷星/炫耀动机消失</b></td>
+  <td><span class="pill p1">P1</span></td>
+</tr>
+</tbody>
+</table>
+
+<h2>1 · 现状盘点</h2>
+
+<div class="kpis">
+  <div class="kpi"><div class="n">4</div><div class="l">调色板颜色上限</div><div class="sub">难度天花板来源</div></div>
+  <div class="kpi"><div class="n" style="color:var(--red)">17</div><div class="l">难度开始静止的关卡</div><div class="sub">此后 24 关参数相同</div></div>
+  <div class="kpi"><div class="n" style="color:var(--red)">0</div><div class="l">金币消耗出口数量</div><div class="sub">只有 <code>+=</code>，无 <code>-=</code></div></div>
+  <div class="kpi"><div class="n" style="color:var(--amber)">1.7~2.5×</div><div class="l">限步冗余倍数</div><div class="sub">60~80 步 vs 实需 32~47</div></div>
+  <div class="kpi"><div class="n" style="color:var(--green)">64 KB</div><div class="l">包体（零第三方素材）</div><div class="sub">小游戏主包上限 4 MB</div></div>
+</div>
+
+<h3>核心循环</h3>
+<div class="chart">
+<svg viewBox="0 0 680 150" role="img" aria-label="核心循环流程图">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+      <path d="M0,0 L7,3.2 L0,6.4 z" fill="#5b6478"/>
+    </marker>
+  </defs>
+  <g font-family="inherit" font-size="12.5" text-anchor="middle">
+    <rect x="12" y="46" width="96" height="46" rx="10" fill="#eef1f8" stroke="#cdd5e0"/>
+    <text x="60" y="74" fill="#1b1f2a">选源管</text>
+    <line x1="110" y1="69" x2="138" y2="69" stroke="#5b6478" stroke-width="1.6" marker-end="url(#ar)"/>
+    <rect x="140" y="46" width="96" height="46" rx="10" fill="#eef1f8" stroke="#cdd5e0"/>
+    <text x="188" y="74" fill="#1b1f2a">选目标管</text>
+    <line x1="238" y1="69" x2="266" y2="69" stroke="#5b6478" stroke-width="1.6" marker-end="url(#ar)"/>
+    <rect x="268" y="46" width="110" height="46" rx="10" fill="#f2f6ff" stroke="#3b7bff"/>
+    <text x="323" y="68" fill="#1b1f2a">倒球动画</text>
+    <text x="323" y="83" fill="#5b6478" font-size="11">afterMove()</text>
+    <line x1="380" y1="69" x2="404" y2="69" stroke="#5b6478" stroke-width="1.6" marker-end="url(#ar)"/>
+    <path d="M416,58 L462,58" stroke="#5b6478" stroke-width="1.6" marker-end="url(#ar)"/>
+    <rect x="466" y="34" width="104" height="42" rx="10" fill="#f1fbf4" stroke="#16a34a"/>
+    <text x="518" y="52" fill="#1b1f2a" font-size="12">全单色？</text>
+    <text x="518" y="67" fill="#0f7a37" font-size="11">→ win() 结算</text>
+    <path d="M416,86 L462,86" stroke="#5b6478" stroke-width="1.6" marker-end="url(#ar)"/>
+    <rect x="466" y="66" width="104" height="42" rx="10" fill="#fff5f5" stroke="#e5484d"/>
+    <text x="518" y="84" fill="#1b1f2a" font-size="12">无合法步？</text>
+    <text x="518" y="99" fill="#b3191e" font-size="11">→ 死局弹窗</text>
+    <path d="M406,42 C432,16 448,16 466,42" fill="none" stroke="#cdd5e0" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <path d="M584,55 L640,55 L640,140 L188,140 L188,96" fill="none" stroke="#5b6478" stroke-width="1.6" marker-end="url(#ar)"/>
+    <text x="400" y="134" fill="#5b6478" font-size="11.5">循环完整 → 但循环之外没有「长线目标」</text>
+  </g>
+</svg>
+</div>
+
+<h3>难度曲线（按代码公式核算）</h3>
+<table>
+<thead><tr><th>关卡</th><th class="num">色数</th><th class="num">空管(目标)</th><th class="num">空管(实际)</th><th class="num">球数</th><th class="num">总管数</th><th class="num">限步</th></tr></thead>
+<tbody>
+<tr><td>1–2</td><td class="num">2</td><td class="num">2</td><td class="num">2</td><td class="num">8</td><td class="num">4</td><td class="num">无限</td></tr>
+<tr><td>7</td><td class="num">5</td><td class="num">2</td><td class="num">2</td><td class="num">20</td><td class="num">7</td><td class="num">40</td></tr>
+<tr><td>12</td><td class="num">7</td><td class="num">1</td><td class="num" style="color:var(--green)">1 ✅</td><td class="num">28</td><td class="num">8</td><td class="num">56</td></tr>
+<tr class="warn"><td>16</td><td class="num">9</td><td class="num">1</td><td class="num" style="color:var(--amber)">2 ⚠️被兜底拉回</td><td class="num">36</td><td class="num">11</td><td class="num">72</td></tr>
+<tr class="hot"><td><b>17</b></td><td class="num"><b>10 封顶</b></td><td class="num">1</td><td class="num" style="color:var(--red)">2 ⚠️</td><td class="num">40</td><td class="num">12</td><td class="num">80</td></tr>
+<tr class="hot"><td><b>18–40</b></td><td class="num"><b>10 不变</b></td><td class="num">1</td><td class="num"><b>2 不变</b></td><td class="num"><b>40 不变</b></td><td class="num"><b>12 不变</b></td><td class="num"><b>80 不变</b></td></tr>
+</tbody>
+</table>
+
+<div class="chart">
+<svg viewBox="0 0 680 230" role="img" aria-label="难度曲线：色数在第17关封顶">
+  <g font-family="inherit" font-size="11.5" fill="#5b6478">
+    <line x1="58" y1="18" x2="58" y2="176" stroke="#cdd5e0"/>
+    <line x1="58" y1="176" x2="646" y2="176" stroke="#cdd5e0"/>
+    <text x="30" y="24" text-anchor="middle">10色</text>
+    <text x="30" y="97" text-anchor="middle">6色</text>
+    <text x="30" y="180" text-anchor="middle">2色</text>
+    <line x1="54" y1="20" x2="646" y2="20" stroke="#eef1f8"/>
+    <line x1="54" y1="98" x2="646" y2="98" stroke="#eef1f8"/>
+    <!-- 色数折线：lv1-2=2, 3-4=3 ... 17+=10 -->
+    <polyline points="58,176 88,176 88,156 118,156 118,137 148,137 148,117 178,117 178,98 208,98 208,78 238,78 238,59 268,59 268,39 298,39 298,20 358,20 646,20"
+      fill="none" stroke="#3b7bff" stroke-width="2.6"/>
+    <circle cx="298" cy="20" r="3.6" fill="#3b7bff"/>
+    <circle cx="646" cy="20" r="3.6" fill="#3b7bff"/>
+    <!-- 17 关竖直标记 -->
+    <line x1="298" y1="20" x2="298" y2="176" stroke="#e5484d" stroke-width="1.6" stroke-dasharray="5 4"/>
+    <rect x="232" y="184" width="132" height="20" rx="10" fill="#ffe3e4"/>
+    <text x="298" y="198" fill="#b3191e" text-anchor="middle" font-size="11.5" font-weight="600">第 17 关起难度静止</text>
+    <text x="470" y="196" fill="#5b6478" text-anchor="middle" font-size="11.5">18~40 关：色数 / 空管 / 球数 / 限步 逐字相同</text>
+    <text x="58" y="214" font-size="11">关卡 1</text>
+    <text x="646" y="214" text-anchor="end" font-size="11">关卡 40</text>
+    <text x="360" y="14" text-anchor="middle" font-size="11.5" fill="#3b7bff" font-weight="600">色数（唯一在动的难度旋钮）</text>
+  </g>
+</svg>
+</div>
+
+<h3>金币流水：只有进水，没有出水</h3>
+<table>
+<thead><tr><th>来源</th><th class="num">数量</th><th>频次</th></tr></thead>
+<tbody>
+<tr><td>通关结算</td><td class="num">10 + 星级×5 → 15/20/25</td><td>每关</td></tr>
+<tr><td>每日签到</td><td class="num">20 / 25 / 30 / 40 / 50 / 60 / <b>100</b></td><td>每天（7 天循环）</td></tr>
+<tr><td>每日谜题首通</td><td class="num">+60</td><td>每天</td></tr>
+<tr><td>分享（每日首次）</td><td class="num">+30</td><td>每天</td></tr>
+<tr><td>看广告</td><td class="num">+10</td><td>每次（无频控）</td></tr>
+<tr class="hot"><td><b>消耗</b></td><td class="num"><b>无</b></td><td><b>—</b></td></tr>
+</tbody>
+</table>
+<p class="meta">活跃玩家日收入 ≈ <b>100~200 金币</b>，零消耗。货币的三种功能（价值度量 / 行为激励 / 消耗节奏）只剩「行为激励」，而因为无处可花，连激励都失效了。</p>
+
+<h2>2 · 限步机制实测（用游戏自带求解器）</h2>
+<table>
+<thead><tr><th class="num">关卡</th><th class="num">色/管</th><th class="num">限步</th><th class="num">求解器实测解步数</th><th class="num">余量</th><th>结论</th></tr></thead>
+<tbody>
+<tr><td class="num">7</td><td class="num">5 / 7</td><td class="num">40</td><td class="num">13</td><td class="num">27</td><td><span class="pill ok">余量充足</span></td></tr>
+<tr><td class="num">10</td><td class="num">6 / 8</td><td class="num">48</td><td class="num">22</td><td class="num">26</td><td><span class="pill ok">余量充足</span></td></tr>
+<tr><td class="num">16</td><td class="num">9 / 11</td><td class="num">72</td><td class="num">33</td><td class="num">39</td><td><span class="pill ok">余量充足</span></td></tr>
+<tr><td class="num">17</td><td class="num">10 / 12</td><td class="num">80</td><td class="num">36</td><td class="num">44</td><td><span class="pill ok">余量充足</span></td></tr>
+<tr><td class="num">40</td><td class="num">10 / 12</td><td class="num">80</td><td class="num">47</td><td class="num">33</td><td><span class="pill ok">余量充足</span></td></tr>
+</tbody>
+</table>
+<div class="callout warn">
+  12 个限步关<b>全部余量 ≥23 步，无一关能逼近上限</b>。注意：「解步数」是 DFS <b>首解上界</b>（非最优），
+  所以真实余量只会<b>更大</b> —— 即「限步无压力」这个结论<b>只会更强</b>，不会反过来。
+</div>
+
+<h2>3 · 经济闭环建议（纯便利，不碰数值红线）</h2>
+<table>
+<thead><tr><th>商品</th><th class="num">定价建议</th><th>定位</th><th>是否影响星级</th></tr></thead>
+<tbody>
+<tr><td>提示券 ×1</td><td class="num">30 金币</td><td>替代现在「点提示直接扣星」</td><td>使用即放弃满星（沿用现口径）</td></tr>
+<tr><td>撤销券 ×5</td><td class="num">100 金币</td><td>现在撤销免费但扣星</td><td>同上</td></tr>
+<tr class="warn"><td><b>护星徽章 ×1</b></td><td class="num"><b>150 金币</b></td><td><b>核心消耗口</b>：把「用辅助必然掉星」改为「花钱保留星级」</td><td>等于用金币买回星级</td></tr>
+<tr><td>皮肤：管身质感</td><td class="num">200~500 金币</td><td>纯外观（磨砂/玻璃/木纹）</td><td>不影响</td></tr>
+</tbody>
+</table>
+<p><b>为什么「护星徽章」是最好的消耗口</b>：它把上表 #5 的星级权威性找了回来——星级依然代表技术，只是允许用金币豁免；同时给刷星玩家一个<b>可无限重复</b>的金币出口。</p>
+
+<h2>4 · 上架合规自测（✅ 通过 / ⚠️ 注意 / ❌ 禁止）</h2>
+<div class="callout warn"><b>政策会更新</b>，请以国家新闻出版署与微信开放社区最新口径为准。以下为策划侧检查项，不构成法律意见。</div>
+<table>
+<thead><tr><th>项</th><th style="width:92px">状态</th><th>说明与整改方向</th></tr></thead>
+<tbody>
+<tr class="hot"><td>注册主体</td><td><span class="pill bad">❌ 禁止前置</span></td><td><b>个人不能注册小游戏</b>，需企业 / 个体工商户 / 其他组织。<b>这是立项第一步。</b></td></tr>
+<tr><td>软件著作权</td><td><span class="pill bad">❌ 未办理</span></td><td>游戏类目提审一般需提交软著。材料：源代码前后各 30 页 + 说明书 + 登记申请表。</td></tr>
+<tr class="hot"><td>版号（游戏出版物号）</td><td><span class="pill bad">❌ 未办理</span></td><td><b>国内上架小游戏需版号。</b>无版号 → <b>不能开通虚拟支付、不能有任何真实付费</b>。当前项目是「零付费纯占位」，在无版号状态下是唯一安全形态。</td></tr>
+<tr><td>实名 + 未成年人防沉迷</td><td><span class="pill bad">❌ 未接入</span></td><td>需接入实名认证与未成年时段/时长/消费限制。当前无付费，风险低，但上线前必须补。</td></tr>
+<tr><td>用户隐私保护指引</td><td><span class="pill bad">❌ 未填写</span></td><td>需在平台填写并列明收集的数据与用途；调用相关接口前须获授权。</td></tr>
+<tr><td>内容安全（UGC）</td><td><span class="pill na">⚠️ 待接入</span></td><td>排行/昵称属 UGC，需内容安全检测。当前排行未实现，暂无风险。</td></tr>
+<tr class="ok"><td>素材侵权</td><td><span class="pill ok">✅ 无风险</span></td><td>零第三方素材：图形全程序化绘制、音效 WebAudio 合成、系统字体。<b>本项目最大合规优势，务必保持「零外部资源」铁律。</b></td></tr>
+<tr class="ok"><td>iOS 虚拟支付</td><td><span class="pill ok">✅ 已规避</span></td><td>项目已主动隐藏 iOS 端内购入口，符合苹果政策。</td></tr>
+<tr class="ok"><td>包体</td><td><span class="pill ok">✅ 无风险</span></td><td>64 KB 单文件，远低于小游戏主包 4 MB 限制。</td></tr>
+</tbody>
+</table>
+<div class="callout bad">
+  <b>❌ 千万不要</b>：金币与真实货币双向兑换 / 可提现；「金币充值包」类付费购买金币的入口；抽奖开箱式道具发放。
+  <br><b>⚠️ 注意</b>：道具商城一旦涉及真实货币购买，即触发版号 + 虚拟支付要求 → <b>拿到版号前，商城只能「金币兑换」，不能有任何付费购买金币的入口。</b>
+</div>
+
+<h2>5 · 路线图</h2>
+<table>
+<thead><tr><th style="width:158px">阶段</th><th>内容</th><th style="width:190px">前置依赖</th></tr></thead>
+<tbody>
+<tr><td><b>立即</b><br><span class="meta">不依赖版号</span></td>
+    <td>求解器返回解步数 → 限步改 <code>ceil(refSteps×1.35)</code> → 星级 par 改 <code>ceil(refSteps×1.15)</code> → HUD 常显「剩余 N 步」<br>道具商城（金币兑换）+ 护星徽章<br>海报二维码 · 每日谜题成绩分享文案</td>
+    <td>无。全部为纯游戏内改动</td></tr>
+<tr><td><b>下一步</b></td>
+    <td>结算页金币翻倍广告 · 插屏/Banner 频控<br>关卡地图页 + 分章集星<br>漏签补偿 · 每日连续奖励 · 换题倒计时</td>
+    <td>经济闭环（商城）先落地</td></tr>
+<tr><td><b>机制级</b><br><span class="meta">单独立项</span></td>
+    <td>变容 CAP 3/4/5 · 冰封球（相邻操作解冻）<br>章节化重构（每章 10 关 30 星）</td>
+    <td>需完整规格文档（牵动布局/生成器/求解器/每日题面）</td></tr>
+<tr class="hot"><td><b>上线前必备</b><br><span class="meta">需外部办理</span></td>
+    <td>企业主体 → 软著 → 版号 → 实名防沉迷 → 隐私指引</td>
+    <td><b>版号是整个变现链条的总闸门</b></td></tr>
+</tbody>
+</table>
+
+<h2>6 · 本次评审「不做」的决定及理由</h2>
+<ul>
+  <li><b>不改 <code>isWin</code> 口径</b>：当前「每管空或单色」比经典 ball-sort 宽松（2 红 + 2 红分两管也算赢）。收紧到「装满 CAP」会显著提高难度并改变每日题解，<b>这是产品决策而非 Bug</b>，需先确认目标用户群（休闲向保留宽松 / 硬核向收紧）。</li>
+  <li><b>本轮不做机制级改动</b>：变容/冰封会牵动布局、生成器、求解器与每日题面，回归面过大，不适合与常规优化混在同一轮。</li>
+  <li><b>不代办理软著/版号</b>：只给路径、材料清单与官方入口；实际申请请走官方渠道或专业机构。</li>
+</ul>
+
+<footer>
+  数据复算：<code>node .workbuddy/tools/probe_level_curve.js</code>（限步余量）·
+  <code>probe_presolved.js</code> · <code>probe_undo_tube.js</code> · <code>bench_gen.js</code>（生成耗时）·
+  <code>verify.js</code>（186 项回归）<br>
+  实测环境：Node v22.22.2 · Windows · 2026-09-30 14:2x · 求解器节点上限 400,000<br>
+  完整规格见 <code>design_specs/progression_and_economy_review.md</code>。官方查证入口：微信小游戏开发者文档 · 微信开放社区 · 国家新闻出版署 nppa.gov.cn
+</footer>
+
+</div>
+</body>
+</html>
