@@ -356,8 +356,10 @@ function startDaily(){
   dailyDate = ds;
   mode = "daily";
   const my = ++genToken;
-  showGenMask("每日谜题 " + ds);
-  setTimeout(()=>{
+  // 与 startLevel 同一套自适应遮罩逻辑
+  const needMask = genMsLast > GEN_MASK_MS;
+  if(needMask) showGenMask("每日谜题 " + ds);
+  const build = ()=>{
     if(my !== genToken) return;
     tubes = genDaily(ds);
     clearHint(true);
@@ -368,7 +370,8 @@ function startDaily(){
     hideDeadlock(); hideGenMask();
     layout(); render();
     toast("每日谜题 · " + ds);
-  }, 0);
+  };
+  if(needMask) setTimeout(build, 0); else build();
 }
 
 /* ---------- 分享界面：GitHub Pages 链接 + 程序化海报(零素材) ---------- */
@@ -598,20 +601,40 @@ function randomFill(colors, empties, rnd){
   return s;
 }
 
-function genLevel(lv){
-  let colors = Math.min(2 + Math.floor((lv-1)/2), PALETTE.length);
-  let empties = lv>10 ? 1 : 2;
-  for(let attempt=0; attempt<400; attempt++){
-    let s = randomFill(colors, empties);
-    const r = solve(s);
-    if(r && r.first){
-      return {tubes:s};
+/* 生成预算：分阶段尝试 —— 先用"空管更少(更难)"的目标空管数试一小段，
+   实在找不到再逐级加空管兜底。旧实现是在同一个空管数上死磕 200 次才加空管，
+   而 10 色 1 空管时随机填充几乎不可能通过 solve 校验，等于白白烧掉 200 次 DFS
+   （实测 ~160ms/关，低端机 1s+）才走到"加空管"这条本来就必然走的路。 */
+const GEN_STAGES = [40, 120, 400];  // 各阶段的"累计尝试数"上限；空管数依次为 base+0/+1/+2
+const GEN_MASK_MS = 60;             // 上次生成超过该耗时，下次才先出遮罩让出主线程
+let genMsLast = 0;                  // 上一次生成耗时(ms)，用于自适应决定要不要遮罩
+// 最近一次生成的诊断信息(尝试次数/耗时/最终空管数与颜色数)，便于定位高阶关卡卡顿
+const genStats = { tries: 0, ms: 0, empties: 0, colors: 0 };
+// 随机填充 + solve 校验，保证可解；rnd 可选(每日谜题注入日期种子)
+function fillSolvable(colors, baseEmpties, rnd){
+  const t0 = nowMs();
+  let tries = 0, empties = baseEmpties, s = null;
+  for(let st=0; st<GEN_STAGES.length && !s; st++){
+    empties = baseEmpties + st;
+    const cap = GEN_STAGES[st];
+    while(tries < cap){
+      tries++;
+      const cand = randomFill(colors, empties, rnd);
+      if(solve(cand)){ s = cand; break; }
     }
-    if(attempt===200 && empties<3){ empties++; } // 兜底：加空管保证可解
   }
-  // 极端兜底：直接给已解状态(理论不会到这)
-  let s=[]; for(let c=0;c<colors;c++){ s.push(Array(CAP).fill(c)); } for(let e=0;e<empties;e++) s.push([]);
-  return {tubes:s};
+  if(!s){ // 极端兜底：直接给已解状态(理论不会到这)
+    s = []; for(let c=0;c<colors;c++) s.push(Array(CAP).fill(c));
+    for(let e=0;e<empties;e++) s.push([]);
+  }
+  genStats.tries = tries; genStats.ms = nowMs()-t0;
+  genStats.empties = empties; genStats.colors = colors;
+  genMsLast = genStats.ms;
+  return s;
+}
+function genLevel(lv){
+  const colors = Math.min(2 + Math.floor((lv-1)/2), PALETTE.length);
+  return {tubes: fillSolvable(colors, lv>10 ? 1 : 2)};
 }
 function colorCount(s){
   const set = new Set();
@@ -639,15 +662,8 @@ function dailyColors(ds){ return 5 + Math.floor(mulberry32(hashSeed(DAILY_SALT+d
 function genDaily(ds){
   const rnd = mulberry32(hashSeed(DAILY_SALT+ds));
   const colors = 5 + Math.floor(rnd()*3);   // 与 dailyColors 同源，保证"预告=实际"
-  let empties = 2;
-  for(let attempt=0; attempt<400; attempt++){
-    const s = randomFill(colors, empties, rnd);
-    const r = solve(s);
-    if(r && r.first) return s;              // 与普通关卡同标准：必须可解
-    if(attempt===200 && empties<3) empties++; // 兜底加空管
-  }
-  let s=[]; for(let c=0;c<colors;c++) s.push(Array(CAP).fill(c)); for(let e=0;e<empties;e++) s.push([]);
-  return s;
+  // 与普通关卡同一套预算(必须可解)，且用日期种子 rnd → 尝试次数确定，全服同题面
+  return fillSolvable(colors, 2, rnd);
 }
 
 /* ---------- 布局与绘制 ---------- */
@@ -1248,9 +1264,11 @@ function hideGenMask(){ document.getElementById("genOverlay").style.display = "n
 function startLevel(lv){
   mode = "normal";              // 线性闯关模式(每日谜题走 startDaily)
   const my = ++genToken;
-  showGenMask("第 " + lv + " 关");
-  // 让出主线程先绘制遮罩，避免高阶关卡生成耗时导致白屏/卡顿
-  setTimeout(()=>{
+  // 自适应遮罩：生成已经很快(见 GEN_STAGES)，普通关卡直接同步生成 ——
+  // 不留遮罩就不会「闪一下」；只有上次生成确实慢(低端机/极端关卡)时才先出遮罩让出主线程。
+  const needMask = genMsLast > GEN_MASK_MS;
+  if(needMask) showGenMask("第 " + lv + " 关");
+  const build = ()=>{
     if(my !== genToken) return; // 已被更新的关卡取代
     const g = genLevel(lv);
     tubes = g.tubes;
@@ -1262,7 +1280,8 @@ function startLevel(lv){
     moveLimit = lv>6 ? colors*8 : 0; // 后期加入限步挑战(颜色数*8)
     hideDeadlock(); hideGenMask();
     layout(); render();
-  }, 0);
+  };
+  if(needMask) setTimeout(build, 0); else build();
 }
 window.addEventListener("resize", resize);
 window.addEventListener("orientationchange", ()=>setTimeout(resize,120));
@@ -1270,8 +1289,9 @@ window.addEventListener("load", ()=>setTimeout(resize, 0));
 load();
 document.getElementById("btnMute").textContent = muted?"🔇 静音":"🔊 音效";
 try{
-  startLevel(level);
+  // 先量尺寸再生成：生成已改为「够快就同步」，若先生成，build() 里的 layout() 会拿到 W=0/H=0
   resize();
+  startLevel(level);
 }catch(err){ showFatal((err&&err.message)||String(err)); }
 // 首次进入自动弹一次过关说明(sawHelp 存档，避免每次都弹)
 detectSign();
