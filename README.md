@@ -69,7 +69,13 @@ python -m http.server 8080
 
 ## 部署
 
-推送到 `main` 后由 GitHub Actions 自动发布到 GitHub Pages（见 `.github/workflows/pages.yml`）。
+站点由 GitHub Actions 自动发布（`.github/workflows/pages.yml`）：推送到 `main` 即触发，产物只包含 `index.html`（设计文档与迭代日志不会被公开成网页）。
+
+**首次启用需要一次性手动设置**（GitHub 限制：workflow 的 `GITHUB_TOKEN` 无权自行创建 Pages 站点）：
+
+> Settings → Pages → Build and deployment → **Source 选「GitHub Actions」** → 保存
+
+之后每次推送 `main` 都会自动重新部署，地址不变。若选「Deploy from a branch」+ `main` / `(root)` 也可以，但那样会把仓库内所有文件都当作网页公开，此时应删除 `pages.yml`。
 
 ## License
 
