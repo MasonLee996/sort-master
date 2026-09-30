@@ -1,5 +1,8 @@
 name: Deploy GitHub Pages
 
+# ⚠️ 首次使用需要一次性手动开启（GitHub 限制：workflow 的 GITHUB_TOKEN 无权自行创建 Pages 站点）
+#    仓库 → Settings → Pages → Build and deployment → Source 选「GitHub Actions」
+#    开启后本 workflow 即正常工作，之后每次推送到 main 都会自动发布。
 on:
   push:
     branches: [main]
@@ -24,6 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 只把游戏本体作为站点产物上传：设计文档 / 迭代日志不会被公开成网页
       - name: Stage static site
         run: |
           mkdir -p _site
@@ -32,8 +36,6 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
