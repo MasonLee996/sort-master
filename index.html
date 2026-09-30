@@ -282,6 +282,27 @@ const SKINS = {
   wood:    {name:"木纹管身", fill:"#f6ead8",              stroke:"#c9a678"}
 };
 
+// 关卡曲线表（难度唯一出口）：lv → {colors, empties, cap, labeled}
+// 设计：第 1 关为手工教程关；第 2~9 关每关 +1 色（≈×1.38/关，近似指数）；
+//       第 10 关起 colors 封顶 10（PALETTE 上限），改由 P3(CAP)/P4(标注管) 接力。
+// 注意：cap/labeled 本期【不消费】，仅作为 P3/P4 的预留列，先填默认值。
+const LEVEL_CURVE = [
+  { colors: 2,  empties: 2, cap: 4, labeled: 0 },  // lv 1（教程关，题面手工写死）
+  { colors: 3,  empties: 2, cap: 4, labeled: 0 },  // lv 2
+  { colors: 4,  empties: 2, cap: 4, labeled: 0 },  // lv 3
+  { colors: 5,  empties: 2, cap: 4, labeled: 0 },  // lv 4
+  { colors: 6,  empties: 2, cap: 4, labeled: 0 },  // lv 5
+  { colors: 7,  empties: 2, cap: 4, labeled: 0 },  // lv 6
+  { colors: 8,  empties: 2, cap: 4, labeled: 0 },  // lv 7
+  { colors: 9,  empties: 2, cap: 4, labeled: 0 },  // lv 8
+  { colors: 10, empties: 2, cap: 4, labeled: 0 },  // lv 9 及以后（colors 封顶）
+];
+// 越界钳制：lv<1 取第 1 行，lv>表长 取最后一行
+function levelParams(lv){
+  const i = Math.max(1, Math.min(lv|0, LEVEL_CURVE.length)) - 1;
+  return LEVEL_CURVE[i];
+}
+
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
 const stage = document.getElementById("stage");
@@ -654,7 +675,9 @@ function solve(start, capNodes=200000){
     return false;
   }
   const ok = dfs(clone(start),0);
-  return ok ? {first:bestFirst, steps:bestSteps} : null;
+  // 返回值：first = 根节点那一步（提示用，语义/取值不变）；steps = DFS 首解上界（限步/星级基准，不变）；
+  //        nodes = DFS 内部访问计数器最终值（新增，作为"求解器回溯规模"难度度量，仅供诊断/探针使用）。
+  return ok ? {first:bestFirst, steps:bestSteps, nodes: nodes} : null;
 }
 
 function randomFill(colors, empties, rnd){
@@ -686,15 +709,21 @@ function randomFill(colors, empties, rnd){
    实在找不到再逐级加空管兜底。旧实现是在同一个空管数上死磕 200 次才加空管，
    而 10 色 1 空管时随机填充几乎不可能通过 solve 校验，等于白白烧掉 200 次 DFS
    （实测 ~160ms/关，低端机 1s+）才走到"加空管"这条本来就必然走的路。 */
-const GEN_STAGES = [40, 120, 400];  // 各阶段的"累计尝试数"上限；空管数依次为 base+0/+1/+2
-const GEN_MASK_MS = 60;             // 上次生成超过该耗时，下次才先出遮罩让出主线程
-let genMsLast = 0;                  // 上一次生成耗时(ms)，用于自适应决定要不要遮罩
+// 生成预算：分阶段尝试。空管数依次为 base+0 / base+1（**上限 +1**，即 D12 收口）。
+// 实测依据(probe_d12_fallback.js，基准空管=2，每色数 150 次采样)：
+//   各色数下「阶段 0(+0 空管)」即 100% 成功，极端兜底率 0% —— 故把空管兜底上限收到 +1 安全，
+//   无需旧实现的 +2(400 次) 长尾。阶段 0 已够用，极端兜底分支仅作安全网(须可观测，见 genStats.fallback)。
+// 注意：预算只用「尝试次数」(不用墙钟)，否则每日谜题会因设备性能不同而题面漂移、破坏全服一致性。
+const GEN_STAGES = [40, 160];     // 各阶段的"累计尝试数"上限；空管数依次为 base+0 / base+1（上限 +1）
+const GEN_MASK_MS = 60;            // 上次生成超过该耗时，下次才先出遮罩让出主线程
+let genMsLast = 0;                 // 上一次生成耗时(ms)，用于自适应决定要不要遮罩
 // 最近一次生成的诊断信息(尝试次数/耗时/最终空管数、颜色数与参考解步数)，便于定位高阶关卡卡顿
-const genStats = { tries: 0, ms: 0, empties: 0, colors: 0, refSteps: 0 };
+//   dfsNodes  = 求解器回溯规模(难度度量)；fallback = 是否走到极端兜底(观测题面是否退化)
+const genStats = { tries: 0, ms: 0, empties: 0, colors: 0, refSteps: 0, dfsNodes: 0, fallback: false };
 // 随机填充 + solve 校验，保证可解；rnd 可选(每日谜题注入日期种子)
 function fillSolvable(colors, baseEmpties, rnd){
   const t0 = nowMs();
-  let tries = 0, empties = baseEmpties, s = null, ref = 0;
+  let tries = 0, empties = baseEmpties, s = null, ref = 0, solNodes = 0;
   for(let st=0; st<GEN_STAGES.length && !s; st++){
     empties = baseEmpties + st;
     const cap = GEN_STAGES[st];
@@ -707,25 +736,50 @@ function fillSolvable(colors, baseEmpties, rnd){
       // 第 1、2 关正好是 2 色，等于新手前两关就有 ~3% 概率踩到，故在此拦掉。
       if(isWin(cand)) continue;
       const sol = solve(cand);
-      if(sol){ s = cand; ref = Math.max(1, sol.steps||0); break; }  // 记录该题面的参考解步数
+      if(sol){ s = cand; ref = Math.max(1, sol.steps||0); solNodes = sol.nodes||0; break; }  // 记录该题面的参考解步数 + 回溯规模
     }
   }
-  if(!s){ // 极端兜底：从"已排好"退一步，保证既非已完成、也必定有解(1 步可解)
+  if(!s){ // 极端兜底：从"已排好"退一步，保证既非已完成、也必定有解(1 步可解)。
+    // 注意：此分支是安全网，正常路径(实测兜底率 0%)不会走到；走到即意味着题面退化，必须可观测(genStats.fallback)。
     s = []; for(let c=0;c<colors;c++) s.push(Array(CAP).fill(c));
     for(let e=0;e<empties;e++) s.push([]);
     if(empties > 0){ const last = s.length-1; s[last].push(s[0].pop()); }
-    ref = 1;
+    ref = 1; solNodes = 0;
+    genStats.fallback = true;
+  } else {
+    genStats.fallback = false;
   }
   genStats.tries = tries; genStats.ms = nowMs()-t0;
   genStats.empties = empties; genStats.colors = colors;
   genStats.refSteps = ref;
+  genStats.dfsNodes = solNodes;
   genMsLast = genStats.ms;
   return s;
 }
+// 第 1 关教程题面（手工写死，不做随机生成）：2 色 8 球，开局非完成态，参考解由 solve() 实测给出。
+// 满足不变量：球数 = colors×CAP = 8；!isWin。
+// 设计意图的解法（非唯一，求解器可能给出更短路径）：底管顶部 1 倒入空管 →
+//   另一管顶部 0 倒回底管(4 满) → 剩下的 1,1,1 倒入空管。
+// 重要：refSteps 一律由 solve() 计算得出（禁止硬编码），verify 会校验「refSteps == solve(题面).steps」。
+const TUTORIAL_BOARD = [[0,0,0,1],[1,1,1,0],[],[]];
+let TUTORIAL_REFS = 0;   // 由 solve() 实测得出，禁止硬编码后不校验
+function tutorialLevel(){
+  const t0 = nowMs();
+  const sol = solve(clone(TUTORIAL_BOARD));          // 单一出口：参考步数由求解器给出，不手写
+  TUTORIAL_REFS = sol ? Math.max(1, sol.steps||0) : 0;
+  genStats.tries = 0; genStats.ms = nowMs()-t0;
+  genStats.empties = 2; genStats.colors = 2;
+  genStats.refSteps = TUTORIAL_REFS;
+  genStats.dfsNodes = sol ? (sol.nodes||0) : 0;
+  genStats.fallback = false;
+  genMsLast = genStats.ms;
+  return { tubes: clone(TUTORIAL_BOARD), refSteps: TUTORIAL_REFS };   // 必须 clone，禁止返回共享数组
+}
 function genLevel(lv){
-  const colors = Math.min(2 + Math.floor((lv-1)/2), PALETTE.length);
-  const g = fillSolvable(colors, lv>10 ? 1 : 2);
-  return {tubes: g, refSteps: genStats.refSteps};   // 一并带上参考步数，供限步/星级基准使用
+  const p = levelParams(lv);
+  if (lv === 1) return tutorialLevel();     // 第 1 关：手工教程关
+  const g = fillSolvable(p.colors, p.empties);
+  return { tubes: g, refSteps: genStats.refSteps };   // 一并带上参考步数，供限步/星级基准使用
 }
 function colorCount(s){
   const set = new Set();
