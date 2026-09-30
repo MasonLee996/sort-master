@@ -207,8 +207,7 @@
     <button class="act" id="btnRestart" data-page-node-id="KTTDqnw5BluOxniAfScKrX">重开</button>
     <button class="act gold" id="btnAd" data-page-node-id="Huh4GdDkWwmSlYQMQuCagr">+5步/广告</button>
   </footer>
-  <footer style="grid-template-columns:repeat(2,1fr);border-top:none;padding-top:0;" data-page-node-id="jV7C0psjL7Y9uDTlfu2D1A">
-    <button class="act" id="btnNoAds" data-page-node-id="N9Nw5H94hKgukogHE6MxYT">去广告卡(内购)</button>
+  <footer style="grid-template-columns:1fr;border-top:none;padding-top:0;" data-page-node-id="jV7C0psjL7Y9uDTlfu2D1A">
     <button class="act" id="btnMute" data-page-node-id="oLVCMTDUNMqYZXYLT6GhqV">🔊 音效</button>
   </footer>
 </div>
@@ -288,13 +287,23 @@ function detectSign(){
   todayReward = SIGN_REWARDS[Math.min(signStreak,7)];
   pendingSign = true; loginDate = today; save();
 }
+function closeSign(){ document.getElementById("signOverlay").style.display = "none"; }
+// 按钮随领取态切换：未领=「领取」主按钮，已领=「关闭」次级按钮 —— 保证任何状态都能关掉弹窗
+function syncSignBtn(){
+  const claimed = (signClaimedDate === dateStr());
+  const btn = document.getElementById("btnSignClaim");
+  if(btn){
+    btn.textContent = claimed ? "关闭" : "领取";
+    btn.className = claimed ? "act" : "act primary";
+  }
+}
 function showSign(){
   document.getElementById("signStreak").textContent = signStreak;
   document.getElementById("signReward").textContent = "+"+todayReward;
+  const claimed = (signClaimedDate === dateStr());
   const grid = document.getElementById("signGrid");
   if(grid){
     grid.textContent = "";
-    const claimed = (signClaimedDate === dateStr());
     for(let d=1; d<=7; d++){
       const c = document.createElement("div");
       c.style.cssText = "border-radius:8px;padding:6px 0;font-size:11px;text-align:center;line-height:1.4;white-space:pre-line;";
@@ -305,13 +314,14 @@ function showSign(){
       grid.appendChild(c);
     }
   }
+  syncSignBtn();
   document.getElementById("signOverlay").style.display = "flex";
 }
 function claimSign(){
-  if(!pendingSign) return;
+  if(!pendingSign){ closeSign(); return; }   // 已领取：此时按钮是「关闭」
   coins += todayReward; save();
   signClaimedDate = dateStr(); pendingSign = false; save();
-  document.getElementById("signOverlay").style.display = "none";
+  closeSign(); syncSignBtn();
   refreshRail();
   render(); toast("签到 +"+todayReward+" 金币");
 }
@@ -478,6 +488,12 @@ function beep(freq, dur=0.08, type="sine", vol=0.06){
   }catch(e){}
 }
 
+/* ---------- 触觉反馈(零依赖，移动端震动；桌面端/不支持时静默降级) ---------- */
+// 仅在支持 Vibration API 的设备触发，桌面浏览器 navigator.vibrate 多为 undefined 或被忽略，安全无副作用
+function haptic(p){
+  try{ if(navigator && navigator.vibrate) navigator.vibrate(p); }catch(e){}
+}
+
 /* ---------- 关卡生成(随机填充 + 求解器校验保证可解) ---------- */
 function clone(s){ return s.map(t=>t.slice()); }
 function isWin(s){
@@ -534,7 +550,10 @@ function solve(start, capNodes=200000){
         if(canPour(s,i,j)){
           const ns = clone(s); pour(ns,i,j);
           if(dfs(ns, depth+1)){
-            if(bestFirst===null) bestFirst=[i,j];
+            // 只记录「根节点」这一步：递归是从最深层往上返回的，
+            // 若不限定 depth===0，bestFirst 会被最深层（最后一步）抢先写入，
+            // 导致提示给出的是终局前的最后一步，对当前局面往往是非法的。
+            if(depth===0 && bestFirst===null) bestFirst=[i,j];
             return true;
           }
         }
@@ -783,8 +802,28 @@ function toast(msg){
 }
 function pushHistory(){ history.push(clone(tubes)); if(history.length>50) history.shift(); }
 
+// 动画播放中再次输入 = 跳过动画（立即落定）。逻辑态在 pour() 时就已更新，
+// 动画只负责表现，所以跳过是安全的，不会丢步/回滚。
+function skipAnim(){
+  if(!anim) return false;
+  anim = null; animating = false;
+  render(); afterMove();
+  return true;
+}
+// 跳过瞬间可能弹出胜利/死局/广告/生成层，此时本次点按不再透传，避免误触
+function anyModalOpen(){
+  const ids = ["winOverlay","deadOverlay","adOverlay","genOverlay"];
+  for(let i=0;i<ids.length;i++){
+    const el = document.getElementById(ids[i]);
+    if(el && el.style.display === "flex") return true;
+  }
+  return false;
+}
 function onTap(px,py){
-  if(animating) return; // 动画期间锁输入，避免串状态
+  if(animating){
+    skipAnim();                  // 动画中快速点按：先跳过动画
+    if(anyModalOpen()) return;   // 刚弹了胜负/死局层，本次点按到此为止
+  }
   const i = hitTube(px,py);
   if(i<0) return;
   const t = tubes[i];
@@ -884,6 +923,7 @@ function calcStars(){
 }
 function win(){
   beep(880,0.12,"sine",0.07); setTimeout(()=>beep(1175,0.14,"sine",0.07),120);
+  haptic([22,40,22]);   // 过关：双段震动正反馈（桌面端静默降级）
   const st = calcStars();
   let reward = 10 + st*5;
   let extra = "";
@@ -909,14 +949,14 @@ function win(){
 
 /* ---------- 按钮 ---------- */
 function doUndo(){
-  if(animating) return;
+  if(animating){ skipAnim(); if(anyModalOpen()) return; }  // 动画中撤销：先跳过动画再回退
   if(history.length===0){ toast("无可撤销"); return; }
   tubes = history.pop(); moves=Math.max(0,moves-1); selected=-1;
   usedUndo=true; beep(440,0.05); hideDeadlock(); render();
 }
 document.getElementById("btnUndo").onclick=doUndo;
 document.getElementById("btnHint").onclick=()=>{
-  if(animating) return;
+  if(animating){ skipAnim(); if(anyModalOpen()) return; }  // 动画中提示：先跳过动画再给建议
   const r = solve(clone(tubes));
   if(r && r.first){
     usedHint=true;
@@ -941,11 +981,12 @@ document.getElementById("btnAd").onclick=()=>{
     render();
   });
 };
-document.getElementById("btnNoAds").onclick=()=>{
+// 去广告内购：底部独立按钮已移除(与右侧活动栏入口重复)，统一由右侧「🚫去广告」入口调用
+function buyNoAds(){
   if(noAds){ toast("已拥有去广告卡"); return; }
   // 模拟米大师/应用内购
   showPurchase(()=>{ noAds=true; save(); toast("去广告卡 购买成功"); });
-};
+}
 document.getElementById("btnMute").onclick=()=>{
   muted=!muted; save();
   document.getElementById("btnMute").textContent = muted?"🔇 静音":"🔊 音效";
@@ -961,6 +1002,9 @@ document.getElementById("helpOverlay").addEventListener("click", ev=>{
 });
 document.getElementById("entryOverlay").addEventListener("click", ev=>{
   if(ev.target.id==="entryOverlay") document.getElementById("entryOverlay").style.display="none";
+});
+document.getElementById("signOverlay").addEventListener("click", ev=>{
+  if(ev.target.id==="signOverlay") closeSign();   // 点遮罩也能关，杜绝「进得去出不来」
 });
 document.getElementById("btnReplay").onclick=()=>{
   document.getElementById("winOverlay").style.display="none";
@@ -1096,7 +1140,7 @@ function openEntry(id){
   if(id==="sign"){ showSign(); return; }                                 // 每日签到(已实现)
   if(id==="daily"){ showDaily(); return; }                                // 每日谜题(已实现)
   if(id==="share"){ showShare(); return; }                                // 分享给好友(已实现)
-  if(id==="noads"){ document.getElementById("btnNoAds").click(); return; } // 去广告内购(已实现)
+  if(id==="noads"){ buyNoAds(); return; }                                 // 去广告内购(已实现)
   showEntry(id);                                                          // 其余：预告
 }
 buildRail();

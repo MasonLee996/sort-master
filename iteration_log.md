@@ -122,6 +122,9 @@
 
 95. GitHub Pages 上线：用户把 Pages 的 Source 改为「GitHub Actions」后 `has_pages` 由 false 转 true（本轮关键经验：**判 Pages 是否开启要看 `has_pages` 字段，`GET /repos/.../pages` 首次构建前恒 404**）；不劳用户点重跑，改为推送 README 部署说明（`ba9e740`）顺带触发 workflow → **全 6 步 success**，线上 **https://masonlee996.github.io/sort-master/** 返回 HTTP 200 / 53,280 字节，内容与本地 `index.html` **逐字节一致**。分享链路自动衔接：`shareUrl()` 线上取 `location.href`，回落常量与真实地址相同。→ P1/P4 在线发布收口；**遗留**：分享海报只做过程序化验证、未做真机视觉核对（本机未装 agent-browser）。
 
+96. 触觉反馈：新增 `haptic(p)`（`navigator.vibrate` 零依赖，失败/不支持时静默降级），倒球成功 `haptic(12)` 短震、过关 `haptic([22,40,22])` 双段震动强化正反馈；桌面端不震无副作用。→ 补 P0 手感短板，SYNTAX_OK + 三档尺寸 RENDER_OK(tubes=4/arcs=16/提示行未被压) + 1-20 关 SOLVE_OK。
+97. 修两处用户反馈 Bug + 顺手挖出并修掉「提示首步非法」+ 新增 P0 动画可跳过：① **签到关不掉**（用户报）——`signOverlay` 只有「领取」一个按钮，`claimSign()` 开头 `if(!pendingSign) return;`，领取完再进就是死局；现抽 `closeSign()`/`syncSignBtn()`，按钮随领取态切「领取↔关闭」、`claimSign()` 在非待领取态改为直接关闭、并给 `signOverlay` 加遮罩点击关闭（与其它弹窗一致）。② **底部「去广告卡(内购)」与右侧活动栏「🚫去广告」重复**（用户报）——先抽 `buyNoAds()` 再删底部按钮，`openEntry("noads")` 由 `document.getElementById("btnNoAds").click()` 改为直调 `buyNoAds()`（原写法删 DOM 会抛错），底部 footer 列数 `repeat(2,1fr)→1fr`。③ **⚠️ 自查发现的既有 Bug：提示给错步** —— `solve()` 里 `bestFirst` 在递归回溯时是**最深层先写**（深层先返回 true），返回的其实是解路径的**最后一步**，对当前局面常为非法；已加 `depth===0` 限定只记根节点首步 → 提示恢复正确。④ 新增 P0「动画可跳过」：`skipAnim()`（逻辑态在 `pour()` 时已定，跳过只影响表现所以安全）+ `anyModalOpen()` 防跳过瞬间弹出的胜负/死局层被本次点按穿透；`onTap`/`doUndo`/`btnHint` 三处动画中再次输入均改为「先跳过再继续」。⑤ 把验证桩从 `/tmp` 落盘常驻为 `.workbuddy/tools/verify.js`（vm 隔离上下文 + 假时钟 rAF 保证动画可跑完 + 假 setTimeout 队列，一跑覆盖 RENDER/签到/Noads/跳过动画/每日/可解性/提示合法性）。→ SYNTAX_OK + `verify.js` **PASS=62/FAIL=0**，连跑 8 次（每次关卡随机）全绿。
+
 ---
-迭代累计：95 轮（设计 50 + 升级 20 + 执行 25）。
+迭代累计：97 轮（设计 50 + 升级 20 + 执行 27）。
 达成条件：① 迭代 >50 ✅ ② 四约束全覆盖、硬伤已修、多尺寸渲染验证通过、纯AI 已实证可产出可运行游戏 ✅
