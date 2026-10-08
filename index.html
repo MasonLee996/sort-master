@@ -63,6 +63,8 @@
   .rail button .dot{display:none;position:absolute;top:3px;right:4px;width:7px;height:7px;border-radius:50%;
     background:var(--warn);box-shadow:0 0 0 2px #fff;}
   .rail button.hot{border-color:#ffd591;background:linear-gradient(180deg,#fff7e6,#fff);}
+  /* 未实现入口：预先置灰，避免"点进去才发现是预告"（点按行为不变，仍弹功能说明） */
+  .rail button.tbd{opacity:.45;}
   /* 分享界面(GitHub Pages 链接 + 程序化海报) */
   #shareCard{max-height:88%;overflow-y:auto;}
   .linkbox{margin:10px 0;padding:10px;border:1px dashed var(--accent);border-radius:10px;font-size:12px;
@@ -89,9 +91,9 @@
   <header data-page-node-id="bbglBJjc10wNVMgmtIBgrB">
     <div class="stat" data-page-node-id="Gu67lDU7eDfzKpPo8kYDbF"><div class="k" data-page-node-id="LC4smy6DEPsC4c5H0VIu1k">关卡</div><div class="v" id="hudLevel" data-page-node-id="JHre3lq7bGkSiyC1cjmsT3">1</div></div>
     <div class="stat" data-page-node-id="XPAX08h1AEuDbBU1sHPaoI"><div class="k" id="hudMovesK" data-page-node-id="yoKyn5WqIs0Zu8MQw6tG65">步数</div><div class="v" id="hudMoves" data-page-node-id="a7zqDaXp5E9RtzP9OiCwfa">0</div></div>
-    <div class="stat" data-page-node-id="UMTcscImHsqxZlVStVkSou"><div class="k" data-page-node-id="FlWDS91P8mSvYCyk9CD5eG">金币</div><div class="v" id="hudCoins" data-page-node-id="9gfEFHBv0o3ZKpAtXazeU2">0</div></div>
-    <div class="stat" data-page-node-id="GW76x8zXFaCHZN7qBSFQdv"><div class="k" data-page-node-id="lZk4dhpxC0zvj5yoYi6Pag">最佳</div><div class="v" id="hudStars" data-page-node-id="o8L8dofYU1bCIKjLcHNrCE">☆</div></div>
-    <div class="stat"><div class="k">加管</div><div class="v" id="hudAdd">0/3</div></div>
+    <div class="stat" id="hudStatCoins" data-page-node-id="UMTcscImHsqxZlVStVkSou"><div class="k" data-page-node-id="FlWDS91P8mSvYCyk9CD5eG">金币</div><div class="v" id="hudCoins" data-page-node-id="9gfEFHBv0o3ZKpAtXazeU2">0</div></div>
+    <div class="stat" id="hudStatStars" data-page-node-id="GW76x8zXFaCHZN7qBSFQdv"><div class="k" data-page-node-id="lZk4dhpxC0zvj5yoYi6Pag">最佳</div><div class="v" id="hudStars" data-page-node-id="o8L8dofYU1bCIKjLcHNrCE">☆</div></div>
+    <div class="stat" id="hudStatAdd"><div class="k">加管</div><div class="v" id="hudAdd">0/3</div></div>
     <button class="help" id="btnHelp" title="过关说明">?</button>
   </header>
   <div id="stage" data-page-node-id="rsCGCgwHCixI1bK1vTJFuS">
@@ -104,8 +106,11 @@
         <h2 data-page-node-id="45xJJ4a1joBkJdPhDHXsC1">过关！</h2>
         <div class="stars" id="winStars" data-page-node-id="6hBLy1V3hP8yGERK5XkuDW">★★★</div>
         <p id="winReward" data-page-node-id="RsgBPJbj4CFG3FvbvNvjBK">+0 金币</p>
-        <p class="sub" id="winNote" style="display:none"></p>
-        <div class="row" data-page-node-id="cR8ukCmg2ncPgpzABY5kaF">
+    <p class="sub" id="winNote" style="display:none"></p>
+    <div class="row" id="winDoubleRow" style="display:none">
+      <button class="act gold" id="btnWinDouble" style="width:100%">看广告金币翻倍</button>
+    </div>
+    <div class="row" data-page-node-id="cR8ukCmg2ncPgpzABY5kaF">
           <button class="act" id="btnReplay" data-page-node-id="1SCskFCeP330n0h2MO90fy">重玩</button>
           <button class="act primary" id="btnNext" data-page-node-id="yMF5RZpUSRMc1aRECiXpkJ">下一关</button>
         </div>
@@ -131,6 +136,8 @@
           <li><b>怎么操作</b>：点一根「源管」选中（变蓝高亮）→ 再点「目标管」倒过去。想换选择，点回原管取消。</li>
           <li><b>什么情况能倒</b>：目标管<b>是空的</b>，或者目标管<b>顶部颜色和源管顶部相同</b>；一次会把源管顶部连着的同色球一起倒完（受目标管剩余空间限制）。</li>
           <li><b>过关条件</b>：把每种颜色全部收进<b>同一根管</b>，做到<b>每根管里只剩一种颜色（或空着）</b>，即过关。</li>
+        </ol>
+        <ol class="rules" id="helpMore" start="4" style="display:none">
           <li><b>卡住了怎么办</b>：底部「撤销」回退一步；「提示」会直接指出可行的下一步（蓝框 = 源管，琥珀框 = 目标管）。</li>
           <li><b>步数限制</b>：第 7 关起有步数上限（本关参考解步数 ×1.35），顶部会常显<b>剩余 N 步</b>，剩 ≤5 步时变红告警；用完可看广告 <b>+5 步</b>（每关最多 2 次，去广告用户免费领取同奖励），或用金币 40 换 5 步。广告加步属辅助操作，本关最高只能拿 ★★。前期关卡不限步，看广告改为领金币。</li>
           <li><b>星级怎么算</b>：<b>基准步数</b> = 本关参考解步数 ×1.15。<b>★★★</b> = 没用任何辅助（撤销 / 提示 / 广告加管 / 广告加步）<b>且</b>步数 ≤ 基准；<b>★★</b> = 没用辅助但步数<b>超过基准</b>，<b>或</b>用了辅助但步数 ≤ 基准；<b>★</b> = 其余（用了辅助且超过基准）。广告加步（看广告或金币兑换）同样计入辅助操作，本关最高 ★★，护星徽章可免。星越高金币越多。</li>
@@ -141,6 +148,7 @@
           <li><b>左右两侧的小按钮</b>：常驻入口栏（可上下滑动）。左侧是<b>签到</b>（连续 7 天阶梯奖励）、<b>每日谜题</b>（每天一道全服同一题面，不限步，首通 +60 金币）、<b>分享</b>（复制链接 / 生成海报，每日首次 +30 金币）；右侧是<b>商城</b>（金币兑换道具）、<b>首充 / 月卡 / 去广告</b>等。点哪个开哪个。</li>
         </ol>
         <div class="row">
+          <button class="act" id="btnHelpMore">查看完整规则</button>
           <button class="act primary" id="btnHelpClose">知道了</button>
         </div>
       </div>
@@ -323,6 +331,9 @@ let usedUndo = false, usedHint = false; // 本关是否用过撤销/提示(影�
 let addedTubes = 0;                     // 本关通过广告加管次数(上限 MAX_ADD_TUBES，同样影响三星评级)
 let baseTubes = 0;                      // 本关生成时的管数(不含广告加管)；撤销时据此把付费加管补回来
 let adStepsUsed = 0;                    // 本关通过「看广告/金币」加步次数(上限 AD_BOOST_MAX，计入辅助→最高★★)
+let winBaseReward = 0;                  // 本次结算的基础金币(「看广告翻倍」再补一份，不重复计发)
+let winDoubled = false;                 // 本次结算是否已翻倍(防连点重复领取)
+let winExtra = "";                      // 本次结算奖励的后缀文案(如「（每日谜题首通）」)，翻倍后文案要带上
 let boardSnapshot = null;               // 当前关初始题面快照(深拷贝)，供「重开本关」复用同一题面
 let noAds = false;
 let muted = false;
@@ -331,6 +342,11 @@ let undoTickets = 0;          // 撤销券库存：撤销时优先消耗，消�
 let skinsOwned = {};          // 已拥有的管身皮肤 id 集合(纯外观)
 let skinEquipped = "default"; // 当前装备的管身皮肤 id
 let sawHelp = false;   // 是否已看过过关说明(首次进入自动弹一次)
+let sawLimitTip = false;  // 是否已提示过「限步」机制(首次进入限步关时场景化提示，取代塞进首进说明)
+// 新手引导：只在第 1~2 关演示一次「点源管 → 点目标管」。用绿色脉冲圆环(与蓝=选中、琥珀=提示区分)，
+// 画在管底安全区内。照做一次即写存档不再出现；没照做则静默退场，下次进前两关还会演示。
+let guide = {on:false, step:0, from:-1, to:-1};
+let guideDone = false;
 // 每日签到(连续签到, localStorage 持久化)
 let loginDate = "";        // 上次登录日期(本地 YYYY-M-D)
 let signStreak = 0;        // 连续签到天数(1..7 循环)
@@ -357,7 +373,7 @@ function load(){
   try{
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
     level = s.level || 1; coins = s.coins || 0;
-    bestStars = s.bestStars || {}; noAds = !!s.noAds; muted = !!s.muted; sawHelp = !!s.sawHelp;
+    bestStars = s.bestStars || {}; noAds = !!s.noAds; muted = !!s.muted; sawHelp = !!s.sawHelp; sawLimitTip = !!s.sawLimitTip; guideDone = !!s.guideDone;
     hintTickets = s.hintTickets || 0; undoTickets = s.undoTickets || 0;
     skinsOwned = s.skinsOwned || {}; skinEquipped = s.skinEquipped || "default";
     loginDate = s.loginDate||""; signStreak = s.signStreak||0; signClaimedDate = s.signClaimedDate||"";
@@ -366,7 +382,7 @@ function load(){
   }catch(e){}
 }
 function save(){
-  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({level,coins,bestStars,noAds,muted,sawHelp,hintTickets,undoTickets,skinsOwned,skinEquipped,loginDate,signStreak,signClaimedDate,dailyDoneDate,dailyMoves,shareClaimedDate})); }catch(e){}
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({level,coins,bestStars,noAds,muted,sawHelp,sawLimitTip,hintTickets,undoTickets,skinsOwned,skinEquipped,loginDate,signStreak,signClaimedDate,dailyDoneDate,dailyMoves,shareClaimedDate})); }catch(e){}
 }
 
 /* ---------- 每日签到(连续签到, 7 天阶梯) ---------- */
@@ -968,6 +984,30 @@ function roundRect(x,y,w,h,r){
   ctx.arcTo(x,y,x+w,y,r);
   ctx.closePath();
 }
+// 底部「广告」按钮文案的唯一同步出口。
+// 非限步关(第 1~6 关)点它实际拿到的是 +10 金币(见 grantAdBoost)，旧实现文案写死「+5步/广告」
+// → 玩家看到的承诺与拿到的东西不符。限步关达上限时直接置灰，避免"点了才被告知用完"。
+function syncAdBtn(){
+  const b = document.getElementById("btnAd");
+  if(!b) return;
+  if(moveLimit > 0){
+    const left = AD_BOOST_MAX - adStepsUsed;
+    if(left <= 0){ b.textContent = "加步已用完"; b.disabled = true; }
+    else { b.textContent = "+5步/广告"; b.disabled = false; }
+  } else {
+    b.textContent = "+10金币/广告";
+    b.disabled = false;
+  }
+}
+// HUD 分级：新手期(非每日模式 且 第 3 关及以前)只显示「关卡 + 步数」，
+// 避免「金币 0」「最佳 ☆」「加管 0/3」这些当下无意义的信息挤满首屏(首进认知过载的第 106 轮修复项)。
+function syncHudStat(){
+  const rookie = (mode !== "daily" && level <= 3);
+  ["hudStatCoins","hudStatStars","hudStatAdd"].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.style.display = rookie ? "none" : "";
+  });
+}
 function render(){
   ctx.clearRect(0,0,W,H);
   for(let i=0;i<tubes.length;i++) drawTube(i);
@@ -996,6 +1036,9 @@ function render(){
   document.getElementById("hudStars").textContent = mode==="daily"
     ? (dailyDoneDate===dateStr() ? "★" : "☆")
     : (bestStars[level] ? "★".repeat(bestStars[level]) : "☆");
+  // 两个同步出口放在 render 内，保证任何状态变化(切关/加步/加步上限/模式切换)都能反映到 UI
+  syncAdBtn();
+  syncHudStat();
 }
 
 /* ---------- 交互 ---------- */
@@ -1006,10 +1049,10 @@ function hitTube(px,py){
   }
   return -1;
 }
-function toast(msg){
+function toast(msg, ms){
   const el=document.getElementById("toast");
   el.textContent=msg; el.classList.add("show");
-  clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),1200);
+  clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"), ms || 1200);
 }
 function pushHistory(){ history.push(clone(tubes)); if(history.length>50) history.shift(); }
 
@@ -1254,6 +1297,11 @@ function win(){
   }
   coins += reward;
   save();
+  // 结算翻倍广告位(激励视频转化率最高的位置)：reward=0(重复通关无差额)时不展示，避免"翻倍 0 金币"的尴尬
+  winBaseReward = reward; winDoubled = false; winExtra = extra;
+  const drow = document.getElementById("winDoubleRow"), dbtn = document.getElementById("btnWinDouble");
+  if(reward > 0 && drow && dbtn){ drow.style.display = ""; dbtn.textContent = "看广告金币翻倍（+" + reward + "）"; dbtn.disabled = false; }
+  else if(drow){ drow.style.display = "none"; }
   // 每日模式：按钮改文案（再玩一次 / 回到闯关），避免误以为能"下一关"
   document.getElementById("btnReplay").textContent = mode==="daily" ? "再玩一次" : "重玩";
   document.getElementById("btnNext").textContent   = mode==="daily" ? "回到闯关" : "下一关";
@@ -1351,6 +1399,15 @@ document.getElementById("btnMute").onclick=()=>{
 };
 function showHelp(){ document.getElementById("helpOverlay").style.display="flex"; }
 document.getElementById("btnHelp").onclick=showHelp;
+// 说明分层：默认只给「操作 / 能倒 / 过关」3 条(首次自动弹时够用)，
+// 进阶规则(限步/星级/商城/加管/侧栏)折叠起来按需展开 —— 首进不再是一篇要滚两屏的说明书。
+document.getElementById("btnHelpMore").onclick=()=>{
+  const m = document.getElementById("helpMore");
+  const b = document.getElementById("btnHelpMore");
+  const open = m.style.display !== "none";
+  m.style.display = open ? "none" : "";
+  b.textContent = open ? "查看完整规则" : "收起完整规则";
+};
 document.getElementById("btnHelpClose").onclick=()=>{
   document.getElementById("helpOverlay").style.display="none";
   if(pendingSign) showSign();
@@ -1364,6 +1421,24 @@ document.getElementById("entryOverlay").addEventListener("click", ev=>{
 document.getElementById("signOverlay").addEventListener("click", ev=>{
   if(ev.target.id==="signOverlay") closeSign();   // 点遮罩也能关，杜绝「进得去出不来」
 });
+// 结算「金币翻倍」：再补一份与本次结算等额的金币(不是乘算，避免与"星级差额"口径打架)。
+// 去广告卡用户按 D3 口径免费发放同奖励，不播广告。
+function grantWinDouble(){
+  if(winDoubled || winBaseReward <= 0) return false;
+  winDoubled = true;
+  coins += winBaseReward; save();
+  document.getElementById("winReward").textContent = "+" + (winBaseReward*2) + " 金币" + winExtra;
+  const drow = document.getElementById("winDoubleRow");
+  if(drow) drow.style.display = "none";
+  toast("金币翻倍，+" + winBaseReward);
+  render();
+  return true;
+}
+document.getElementById("btnWinDouble").onclick=()=>{
+  if(winDoubled || winBaseReward <= 0){ toast("本次奖励已翻倍"); return; }
+  if(noAds){ grantWinDouble(); return; }         // 去广告卡：免费领同奖励，不播广告
+  showAd(grantWinDouble);
+};
 document.getElementById("btnReplay").onclick=()=>{
   document.getElementById("winOverlay").style.display="none";
   if(mode==="daily") startDaily(); else restartSameBoard();   // 重玩必须回到同一题面，否则星级差额奖励不自洽
@@ -1464,12 +1539,12 @@ const RAIL_ITEMS = {
     {id:"sign",  ico:"📅", name:"签到", hot:true},
     {id:"daily", ico:"🧩", name:"每日"},
     {id:"share", ico:"📤", name:"分享"},
-    {id:"rank",  ico:"🏆", name:"排行"}
+    {id:"rank",  ico:"🏆", name:"排行", tbd:true}   // tbd=未实现，视觉置灰(点按仍弹功能说明)
   ],
   right: [
     {id:"shop",  ico:"🛒", name:"商城"},
-    {id:"first", ico:"🎁", name:"首充"},
-    {id:"card",  ico:"💳", name:"月卡"},
+    {id:"first", ico:"🎁", name:"首充", tbd:true},
+    {id:"card",  ico:"💳", name:"月卡", tbd:true},
     {id:"noads", ico:"🚫", name:"去广告"}
   ]
 };
@@ -1492,7 +1567,8 @@ function buildRail(){
     RAIL_ITEMS[side].forEach(function(it){
       const b = document.createElement("button");
       b.type = "button";
-      b.className = it.hot ? "hot" : "";
+      b.className = (it.hot ? "hot " : "") + (it.tbd ? "tbd" : "");
+      if(it.tbd) b.title = "功能开发中";
       b.setAttribute("data-entry", it.id);
       const ic = document.createElement("span"); ic.className="ico"; ic.textContent = it.ico;
       const nm = document.createElement("span"); nm.className="nm"; nm.textContent = it.name;
@@ -1689,6 +1765,8 @@ function startLevel(lv){
     syncDeadAdBtn();
     // 限步：第 7 关起按「参考步数 ×1.35」定上限(向上取整)；第 6 关及以前不限步
     moveLimit = lv>6 ? Math.ceil(refSteps * 1.35) : 0;
+    // 场景化触发：限步规则只在玩家真正踏进限步关时解释一次(取代写进首进说明)，不留常驻认知负担
+    if(moveLimit > 0 && !sawLimitTip){ sawLimitTip = true; save(); toast("本关限步 " + moveLimit + " 步，顶部常显剩余步数", 2800); }
     hideDeadlock(); hideGenMask();
     layout(); render();
   };
