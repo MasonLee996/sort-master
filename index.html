@@ -1070,13 +1070,77 @@ function syncHudStat(){
     if(el) el.style.display = rookie ? "none" : "";
   });
 }
+/* ---------- 章节场景背景（毛线主题期3首刀，纯外观）：渐变天空+双层剪影+强调浮点，按本章过关进度灰→彩恢复 ---------- */
+// 5 章色板：天空上/下、远/近剪影（hex+透明度）、强调色、波形相位、确定性撒点种子。
+// 全部浅粉彩——保证默认管描边(#cdd5e0)与文字的对比度不被破坏。
+const CHAPTERS = [
+  {name:"晨光线坊", skyTop:"#fdf3e3", skyBot:"#f7dfc4", silFar:"#d6b28c", silFarA:.30, silNear:"#be9468", silNearA:.34, accent:"#e8a15c", phase:1.2, seed:11},
+  {name:"雨后晾线场", skyTop:"#eaf5ee", skyBot:"#d5ecdd", silFar:"#94c4a6", silFarA:.30, silNear:"#6aac8a", silNearA:.34, accent:"#5fae87", phase:2.6, seed:23},
+  {name:"海风染坊", skyTop:"#e8f2fb", skyBot:"#cfe4f6", silFar:"#88b2dc", silFarA:.30, silNear:"#6498c8", silNearA:.34, accent:"#4a90d9", phase:4.1, seed:37},
+  {name:"黄昏灯市", skyTop:"#fbeee2", skyBot:"#f3d3c0", silFar:"#e2a482", silFarA:.30, silNear:"#cd8269", silNearA:.34, accent:"#e07840", phase:5.4, seed:51},
+  {name:"星夜天窗", skyTop:"#e9e6f5", skyBot:"#d4d0ee", silFar:"#9e96cd", silFarA:.28, silNear:"#8078b9", silNearA:.32, accent:"#7a6fd0", phase:6.8, seed:77}
+];
+function chapterOf(lv){ return mode==="daily" ? CHAPTERS.length-1 : Math.min(CHAPTERS.length-1, Math.floor(((lv||1)-1)/10)); }
+// 本章"织造进度"：章内第 1 关 0.1 → 第 10 关 1.0；每日织补视为已复原(1.0)。进度驱动背景灰→彩插值。
+function chProg(){
+  if(mode==="daily") return 1;
+  const inCh = Math.max(1, Math.min(10, level - chapterOf(level)*10));
+  return 0.1 + (inCh-1)*0.1;
+}
+function hex2rgb(h){ const n=parseInt(h.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+function rgbStr(r,g,b){ return "rgb("+Math.round(r)+","+Math.round(g)+","+Math.round(b)+")"; }
+// 两色线性插值
+function mix(h1, h2, t){
+  const a=hex2rgb(h1), b=hex2rgb(h2);
+  return rgbStr(a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t);
+}
+// 去饱和（灰度版）：0.3R+0.59G+0.11B 感知亮度
+function grayOf(h){
+  const c=hex2rgb(h), l=c[0]*0.3+c[1]*0.59+c[2]*0.11;
+  return rgbStr(l,l,l);
+}
+function rgbaOf(rgbStr2, a){
+  const m=rgbStr2.match(/\d+/g);
+  return "rgba("+m[0]+","+m[1]+","+m[2]+","+a+")";
+}
+function wavePath(baseY, amp, freq, phase){
+  ctx.beginPath();
+  ctx.moveTo(0, H); ctx.lineTo(0, baseY);
+  for(let x=0; x<=W+12; x+=12) ctx.lineTo(x, baseY + Math.sin(x*freq+phase)*amp);
+  ctx.lineTo(W, H); ctx.closePath();
+}
+function drawBackground(){
+  const ch = CHAPTERS[chapterOf(level)];
+  const p = chProg();                       // 灰雾未散程度 = 1-恢复度：低进度时世界接近灰白剪影
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, mix(grayOf(ch.skyTop), ch.skyTop, p));
+  g.addColorStop(1, mix(grayOf(ch.skyBot), ch.skyBot, p));
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = rgbaOf(mix(grayOf(ch.silFar), ch.silFar, p), ch.silFarA);   // 远景层
+  wavePath(H*0.78, H*0.05, 0.008, ch.phase); ctx.fill();
+  ctx.fillStyle = rgbaOf(mix(grayOf(ch.silNear), ch.silNear, p), ch.silNearA); // 近景层
+  wavePath(H*0.9, H*0.04, 0.013, ch.phase*2.3); ctx.fill();
+  // 强调色浮点（线絮/星尘）：确定性位置（不抖动、无随机），随恢复度提亮
+  ctx.fillStyle = rgbaOf(mix(grayOf(ch.accent), ch.accent, Math.min(1, p+0.2)), 0.5);
+  for(let i=0;i<7;i++){
+    const sx = ((i*73 + ch.seed*31)%97)/97 * W;
+    const sy = ((i*137 + ch.seed*57)%89)/89 * H*0.55;
+    ctx.beginPath(); ctx.arc(sx, sy, 1.5+(i%3), 0, Math.PI*2); ctx.fill();
+  }
+}
 function render(){
   ctx.clearRect(0,0,W,H);
+  drawBackground();
   for(let i=0;i<tubes.length;i++) drawTube(i);
   drawFlyingBalls();
-  // 常驻过关提示
-  ctx.fillStyle="#9aa4b2"; ctx.font="12px sans-serif"; ctx.textAlign="center";
-  ctx.fillText("点选管子搬运同色 · 每管只剩一种颜色即过关", W/2, H-8);
+  // 常驻过关提示（叠在场景背景上，垫一层半透明底保证可读）
+  const tip = "点选管子搬运同色 · 每管只剩一种颜色即过关";
+  ctx.font="12px sans-serif";
+  const tipW = ctx.measureText(tip).width;
+  ctx.fillStyle="rgba(255,255,255,.55)";
+  ctx.fillRect(W/2-tipW/2-8, H-22, tipW+16, 16);
+  ctx.fillStyle="#9aa4b2"; ctx.textAlign="center";
+  ctx.fillText(tip, W/2, H-8);
   ctx.textAlign="left";
   document.getElementById("hudLevel").textContent = mode==="daily" ? "每日" : level;
   // 限步关：复用「步数」槽位常显剩余步数(不新增常驻 stat，避免 340px 窄屏挤爆)；剩余 ≤5 高亮告警
