@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-page-node-id="0aYyxIvlaQrDdGuyPo8NtR">
-<head data-page-node-id="kbd89g7cQrhE8dqAIYPSIO">
-<meta charset="UTF-8" data-page-node-id="kZGYIpuXNHACWlbJINNtpo" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" data-page-node-id="FeIbdG5iAltfzju7I34Q7P" />
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>收纳大师 · 纯AI小游戏Demo</title>
 <style>
   :root{
@@ -86,33 +86,33 @@
   .v.warn{color:var(--warn);}
 </style>
 </head>
-<body data-page-node-id="xrHFwxEzDOcBTRu1ZtLn4o">
-<div id="app" data-page-node-id="3DWMeZha7KskK08E6nUM8y">
-  <header data-page-node-id="bbglBJjc10wNVMgmtIBgrB">
-    <div class="stat" data-page-node-id="Gu67lDU7eDfzKpPo8kYDbF"><div class="k" data-page-node-id="LC4smy6DEPsC4c5H0VIu1k">关卡</div><div class="v" id="hudLevel" data-page-node-id="JHre3lq7bGkSiyC1cjmsT3">1</div></div>
-    <div class="stat" data-page-node-id="XPAX08h1AEuDbBU1sHPaoI"><div class="k" id="hudMovesK" data-page-node-id="yoKyn5WqIs0Zu8MQw6tG65">步数</div><div class="v" id="hudMoves" data-page-node-id="a7zqDaXp5E9RtzP9OiCwfa">0</div></div>
-    <div class="stat" id="hudStatCoins" data-page-node-id="UMTcscImHsqxZlVStVkSou"><div class="k" data-page-node-id="FlWDS91P8mSvYCyk9CD5eG">金币</div><div class="v" id="hudCoins" data-page-node-id="9gfEFHBv0o3ZKpAtXazeU2">0</div></div>
-    <div class="stat" id="hudStatStars" data-page-node-id="GW76x8zXFaCHZN7qBSFQdv"><div class="k" data-page-node-id="lZk4dhpxC0zvj5yoYi6Pag">最佳</div><div class="v" id="hudStars" data-page-node-id="o8L8dofYU1bCIKjLcHNrCE">☆</div></div>
+<body>
+<div id="app">
+  <header>
+    <div class="stat"><div class="k">关卡</div><div class="v" id="hudLevel">1</div></div>
+    <div class="stat"><div class="k" id="hudMovesK">步数</div><div class="v" id="hudMoves">0</div></div>
+    <div class="stat" id="hudStatCoins"><div class="k">金币</div><div class="v" id="hudCoins">0</div></div>
+    <div class="stat" id="hudStatStars"><div class="k">最佳</div><div class="v" id="hudStars">☆</div></div>
     <div class="stat" id="hudStatAdd"><div class="k">加管</div><div class="v" id="hudAdd">0/3</div></div>
     <button class="help" id="btnHelp" title="过关说明">?</button>
   </header>
-  <div id="stage" data-page-node-id="rsCGCgwHCixI1bK1vTJFuS">
-    <canvas id="cv" data-page-node-id="ovNtxGr5EpihWQ7HaYcz6N"></canvas>
-    <div class="toast" id="toast" data-page-node-id="VOCuGg16r0fybKffYcOoaH"></div>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div class="toast" id="toast"></div>
     <div class="rail" id="railL"></div>
     <div class="rail" id="railR"></div>
-    <div class="overlay" id="winOverlay" data-page-node-id="qujpHVNR06mmQGptBOd9PM">
-      <div class="card" data-page-node-id="VnDkWskkhMocmkbSM3mSNy">
-        <h2 data-page-node-id="45xJJ4a1joBkJdPhDHXsC1">过关！</h2>
-        <div class="stars" id="winStars" data-page-node-id="6hBLy1V3hP8yGERK5XkuDW">★★★</div>
-        <p id="winReward" data-page-node-id="RsgBPJbj4CFG3FvbvNvjBK">+0 金币</p>
+    <div class="overlay" id="winOverlay">
+      <div class="card">
+        <h2>过关！</h2>
+        <div class="stars" id="winStars">★★★</div>
+        <p id="winReward">+0 金币</p>
     <p class="sub" id="winNote" style="display:none"></p>
     <div class="row" id="winDoubleRow" style="display:none">
       <button class="act gold" id="btnWinDouble" style="width:100%">看广告金币翻倍</button>
     </div>
-    <div class="row" data-page-node-id="cR8ukCmg2ncPgpzABY5kaF">
-          <button class="act" id="btnReplay" data-page-node-id="1SCskFCeP330n0h2MO90fy">重玩</button>
-          <button class="act primary" id="btnNext" data-page-node-id="yMF5RZpUSRMc1aRECiXpkJ">下一关</button>
+    <div class="row">
+          <button class="act" id="btnReplay">重玩</button>
+          <button class="act primary" id="btnNext">下一关</button>
         </div>
         <div id="winShareRow" style="display:none;margin-top:12px">
           <div class="linkbox" id="winShareText" title="点击复制">—</div>
@@ -122,11 +122,11 @@
         </div>
       </div>
     </div>
-    <div class="overlay" id="adOverlay" data-page-node-id="4Jbq0t79AqP2Gu3tscmZuv">
-      <div class="card" data-page-node-id="1wiZ0c2MOLo3BD7IAE51RJ">
-        <h2 id="adTitle" data-page-node-id="mhswRCBOvlB9onx23DOKco">广告</h2>
-        <div class="adbox" id="adBox" data-page-node-id="T4IKx4EVif5QoVVq5UsG5b">广告播放中…</div>
-        <p id="adHint" style="margin-top:10px" data-page-node-id="yFrHt1zhpLL6Y3YN4uAp6E">（Demo 模拟，真实环境替换为 wx.createRewardedVideoAd）</p>
+    <div class="overlay" id="adOverlay">
+      <div class="card">
+        <h2 id="adTitle">广告</h2>
+        <div class="adbox" id="adBox">广告播放中…</div>
+        <p id="adHint" style="margin-top:10px">（Demo 模拟，真实环境替换为 wx.createRewardedVideoAd）</p>
       </div>
     </div>
     <div class="overlay" id="helpOverlay">
@@ -260,14 +260,14 @@
       </div>
     </div>
   </div>
-  <footer data-page-node-id="0pgnYKD0Pmm85Cwzbf4gNh">
-    <button class="act" id="btnUndo" data-page-node-id="KbItC3FqdD9FWlpz9DD2eH">撤销</button>
-    <button class="act" id="btnHint" data-page-node-id="c9TJXXOfMxmvzWPpMCXsUj">提示</button>
-    <button class="act" id="btnRestart" data-page-node-id="KTTDqnw5BluOxniAfScKrX">重开</button>
-    <button class="act gold" id="btnAd" data-page-node-id="Huh4GdDkWwmSlYQMQuCagr">+5步/广告</button>
+  <footer>
+    <button class="act" id="btnUndo">撤销</button>
+    <button class="act" id="btnHint">提示</button>
+    <button class="act" id="btnRestart">重开</button>
+    <button class="act gold" id="btnAd">+5步/广告</button>
   </footer>
-  <footer style="grid-template-columns:1fr;border-top:none;padding-top:0;" data-page-node-id="jV7C0psjL7Y9uDTlfu2D1A">
-    <button class="act" id="btnMute" data-page-node-id="oLVCMTDUNMqYZXYLT6GhqV">🔊 音效</button>
+  <footer style="grid-template-columns:1fr;border-top:none;padding-top:0;">
+    <button class="act" id="btnMute">🔊 音效</button>
   </footer>
 </div>
 <script>
