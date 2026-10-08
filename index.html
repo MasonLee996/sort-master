@@ -104,6 +104,7 @@
     <div class="overlay" id="winOverlay">
       <div class="card">
         <h2>过关！</h2>
+        <canvas id="tapestryCv" width="96" height="96" style="display:none;margin:8px auto 2px;border-radius:10px;border:1px solid var(--line);background:#fafbfd"></canvas>
         <div class="stars" id="winStars">★★★</div>
         <p id="winReward">+0 金币</p>
     <p class="sub" id="winNote" style="display:none"></p>
@@ -930,6 +931,24 @@ function drawTube(i){
   ctx.beginPath();
   ctx.moveTo(r.x+r.w*0.7, r.y+10); ctx.lineTo(r.x+r.w*0.7, r.y+r.h-10);
   ctx.stroke();
+  // 归轴成轴（毛线主题融合，纯表现层）：整管满轴且同色 → 管身横向绕线纹理 + 管口线头小结。
+  // 判定只读 tubes[i]，不改 isWin/任何数值、不入撤销栈、不影响评级。
+  const spooled = t.length===CAP && t.every(c=>c===t[0]);
+  if(spooled){
+    const scol = shade(PALETTE[t[0]], 0.8);
+    ctx.strokeStyle = scol;
+    ctx.lineWidth = 2;
+    for(let s=0;s<3;s++){                          // 3 条横向绕线弧（与线团纹理语言一致）
+      const yy = r.y + r.h*(0.32 + s*0.18);
+      ctx.beginPath();
+      ctx.arc(r.x + r.w/2, yy, r.w*0.32, 0.15*Math.PI, 0.85*Math.PI);
+      ctx.stroke();
+    }
+    ctx.beginPath();                               // 线头小结：管口一颗小实心圆
+    ctx.fillStyle = scol;
+    ctx.arc(r.x + r.w/2, r.y + 7, Math.max(2, r.w*0.07), 0, Math.PI*2);
+    ctx.fill();
+  }
   // 球
   const skip = (anim && anim.to===i) ? anim.cnt : 0; // 飞行中的球由动画层绘制，此处隐藏
   for(let k=0;k<t.length;k++){
@@ -1070,8 +1089,8 @@ function syncHudStat(){
     if(el) el.style.display = rookie ? "none" : "";
   });
 }
-/* ---------- 章节场景背景（毛线主题期3首刀，纯外观）：渐变天空+双层剪影+强调浮点，按本章过关进度灰→彩恢复 ---------- */
-// 5 章色板：天空上/下、远/近剪影（hex+透明度）、强调色、波形相位、确定性撒点种子。
+/* ---------- 章节场景背景（毛线世界，纯外观）：渐变天空 + 晾线绳/线团篮/乱线剪影，按本章织造进度灰→彩恢复 ---------- */
+// 5 章色板：天空上/下、远/近剪影（hex+透明度）、强调色、确定性种子（织图散点用）。
 // 全部浅粉彩——保证默认管描边(#cdd5e0)与文字的对比度不被破坏。
 const CHAPTERS = [
   {name:"晨光线坊", skyTop:"#fdf3e3", skyBot:"#f7dfc4", silFar:"#d6b28c", silFarA:.30, silNear:"#be9468", silNearA:.34, accent:"#e8a15c", phase:1.2, seed:11},
@@ -1103,11 +1122,12 @@ function rgbaOf(rgbStr2, a){
   const m=rgbStr2.match(/\d+/g);
   return "rgba("+m[0]+","+m[1]+","+m[2]+","+a+")";
 }
-function wavePath(baseY, amp, freq, phase){
-  ctx.beginPath();
-  ctx.moveTo(0, H); ctx.lineTo(0, baseY);
-  for(let x=0; x<=W+12; x+=12) ctx.lineTo(x, baseY + Math.sin(x*freq+phase)*amp);
-  ctx.lineTo(W, H); ctx.closePath();
+// 晾线绳上某点 x 的绳高：绳线为 (0,H*0.13)→(W/2,H*0.17)→(W,H*0.11) 的二次贝塞尔（微垂）。
+// 控制点 x=W/2 恰好落在 0→W 的中点，故 x(t)=t·W，可由 x 反解参数 t。
+function ropeYat(x){
+  const t = Math.max(0, Math.min(1, x / Math.max(1, W)));
+  const y0 = H*0.13, cy = H*0.17, y1 = H*0.11;
+  return (1-t)*(1-t)*y0 + 2*(1-t)*t*cy + t*t*y1;
 }
 function drawBackground(){
   const ch = CHAPTERS[chapterOf(level)];
@@ -1116,17 +1136,154 @@ function drawBackground(){
   g.addColorStop(0, mix(grayOf(ch.skyTop), ch.skyTop, p));
   g.addColorStop(1, mix(grayOf(ch.skyBot), ch.skyBot, p));
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle = rgbaOf(mix(grayOf(ch.silFar), ch.silFar, p), ch.silFarA);   // 远景层
-  wavePath(H*0.78, H*0.05, 0.008, ch.phase); ctx.fill();
-  ctx.fillStyle = rgbaOf(mix(grayOf(ch.silNear), ch.silNear, p), ch.silNearA); // 近景层
-  wavePath(H*0.9, H*0.04, 0.013, ch.phase*2.3); ctx.fill();
-  // 强调色浮点（线絮/星尘）：确定性位置（不抖动、无随机），随恢复度提亮
-  ctx.fillStyle = rgbaOf(mix(grayOf(ch.accent), ch.accent, Math.min(1, p+0.2)), 0.5);
-  for(let i=0;i<7;i++){
-    const sx = ((i*73 + ch.seed*31)%97)/97 * W;
-    const sy = ((i*137 + ch.seed*57)%89)/89 * H*0.55;
-    ctx.beginPath(); ctx.arc(sx, sy, 1.5+(i%3), 0, Math.PI*2); ctx.fill();
+  // 远景：2~3 个低透明度大线团剪影（替代旧版通用山丘正弦波）
+  ctx.fillStyle = rgbaOf(mix(grayOf(ch.silFar), ch.silFar, p), ch.silFarA);
+  for(let i=0;i<3;i++){
+    const fr = Math.min(W,H)*(0.10 + (i%2)*0.035);
+    const fx = W*(0.16 + i*0.30);
+    const fy = H*0.60 + (i%2)*H*0.07;
+    ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI*2); ctx.fill();
   }
+  // 顶部晾线绳：微垂绳线（棕灰调，随恢复度上色）+ 确定性挂点上的 5 个小线团剪影
+  const ropeCol = mix(grayOf("#9e6c42"), "#9e6c42", p);
+  ctx.strokeStyle = ropeCol; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, H*0.13);
+  ctx.quadraticCurveTo(W/2, H*0.17, W, H*0.11);
+  ctx.stroke();
+  for(let i=0;i<5;i++){
+    const bx = i*(W/6) + W*0.05;             // 确定性挂点（禁 Math.random）
+    const br = 5 + (i%3)*2;                  // 半径 5~9px
+    const by = ropeYat(bx) + br;             // 挂在绳下方
+    const bcol = mix(grayOf(i%2 ? ch.accent : ch.silNear), i%2 ? ch.accent : ch.silNear, p);
+    ctx.fillStyle = rgbaOf(bcol, 0.85 + (i%3)*0.05);
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = rgbaOf(bcol, 0.5); ctx.lineWidth = 1;   // 短弧绕线纹理×2（与线团语言一致）
+    ctx.beginPath(); ctx.arc(bx, by, br*0.62, 0.6, 2.6); ctx.stroke();
+    ctx.beginPath(); ctx.arc(bx, by, br*0.42, 3.1, 5.1); ctx.stroke();
+  }
+  // 近景右下：毛线篮剪影（半椭圆篮体 + 探出篮口的 2 个圆头线团）
+  const nearCol = rgbaOf(mix(grayOf(ch.silNear), ch.silNear, p), Math.min(0.9, ch.silNearA+0.10));
+  const bw = Math.min(W*0.30, 120), bh = bw*0.42;
+  const bx0 = W - bw - 10, by0 = H - bh - 8;
+  ctx.fillStyle = nearCol;
+  ctx.beginPath();
+  ctx.moveTo(bx0, by0);
+  ctx.bezierCurveTo(bx0, by0+bh*1.35, bx0+bw, by0+bh*1.35, bx0+bw, by0);   // 半椭圆篮体
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath();                            // 篮口沿
+  ctx.moveTo(bx0-2, by0); ctx.lineTo(bx0+bw+2, by0);
+  ctx.strokeStyle = nearCol; ctx.lineWidth = 2.5; ctx.stroke();
+  const headCol = rgbaOf(mix(grayOf(ch.accent), ch.accent, p), 0.9);
+  ctx.fillStyle = headCol;
+  ctx.beginPath(); ctx.arc(bx0+bw*0.32, by0-bw*0.09, bw*0.10, 0, Math.PI*2); ctx.fill();  // 探出的线团×2
+  ctx.beginPath(); ctx.arc(bx0+bw*0.62, by0-bw*0.12, bw*0.12, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = rgbaOf(mix(grayOf(ch.accent), ch.accent, p), 0.5);
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(bx0+bw*0.32, by0-bw*0.09, bw*0.06, 0.5, 2.5); ctx.stroke();
+  // 近景左下：一小团散落的乱线（确定性 bezier 乱线×3，不压底部提示行的可读区）
+  const messCol = rgbaOf(mix(grayOf(ch.silNear), ch.silNear, p), Math.min(0.9, ch.silNearA+0.15));
+  ctx.strokeStyle = messCol; ctx.lineWidth = 1.8;
+  const lx = 8, ly = H - 30;
+  ctx.beginPath(); ctx.moveTo(lx, ly);
+  ctx.bezierCurveTo(lx+16, ly-14, lx+34, ly+6, lx+52, ly-8);
+  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx+8, ly+5);
+  ctx.bezierCurveTo(lx+26, ly-10, lx+42, ly+9, lx+58, ly-3);
+  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx+2, ly-4);
+  ctx.bezierCurveTo(lx+20, ly+8, lx+40, ly-12, lx+48, ly+3);
+  ctx.stroke();
+  // 织造进度条（画布顶部 y<18 内，不压管区 marginTop=18）：底槽 + accent 灰彩填充 + 章名小字
+  const pb = progBarGeom();
+  ctx.fillStyle = "rgba(0,0,0,.08)";
+  ctx.fillRect(pb.x, pb.y, pb.w, pb.h);
+  if(pb.fw > 0){
+    ctx.fillStyle = mix(grayOf(ch.accent), ch.accent, p);
+    ctx.fillRect(pb.x, pb.y, pb.fw, pb.h);
+  }
+  ctx.font = "10px sans-serif";
+  ctx.fillStyle = "rgba(31,39,51,.38)";
+  ctx.textAlign = "left";
+  ctx.fillText(ch.name, pb.x, pb.y + pb.h + 5.5);
+}
+// 织造进度条几何（断言出口）：底槽宽 W-32 居中、y=5 起 3px 高；填充宽 = 底槽宽×chProg()
+function progBarGeom(){
+  const bw = Math.max(0, W-32);
+  return { x:(W-bw)/2, y:5, h:3, w:bw, fw: bw*chProg() };
+}
+
+/* ---------- 织图终点（毛线主题期2提前，纯表现）：程序化花纹 + 胜利弹窗逐格点亮 ---------- */
+// 每章挂毯配色（PALETTE 索引+1，贴近本章 accent 色相）：[主色, 副色, 点缀色]
+const TAPESTRY_COLORS = [[6,3,8],[2,9,4],[1,5,7],[6,3,0],[4,7,1]];
+// 程序化花纹生成器：返回 8×8 网格，0=底色格，1..PALETTE.length=PALETTE 色索引+1。
+// ch=0 用左右对称菱形纹（|r-3.5|+|c-3.5| 距离分 3 色环带），ch1~4 分别为竖条纹/波点/锯齿/散点。
+// 全部确定性生成（散点用 CHAPTERS[ch].seed 派生），禁 Math.random。
+function genTapestry(ch){
+  const ci = Math.max(0, Math.min(TAPESTRY_COLORS.length-1, ch|0));
+  const cs = TAPESTRY_COLORS[ci];
+  const c1 = cs[0]+1, c2 = cs[1]+1, c3 = cs[2]+1;
+  const g = [];
+  for(let r=0;r<8;r++){
+    const row = [];
+    for(let c=0;c<8;c++){
+      let v = 0;
+      if(ch===0){
+        const d = Math.abs(r-3.5) + Math.abs(c-3.5);      // 菱形距离 → 3 色环带
+        if(d<=1) v = c3; else if(d<=2) v = c2; else if(d<=4) v = c1;
+      } else if(ch===1){
+        v = (Math.floor(c/2)%2===0) ? c1 : c2;            // 竖条纹
+      } else if(ch===2){
+        if(r%4===1 && c%4===1) v = c1;                    // 波点（错位双点阵）
+        else if(r%4===3 && c%4===3) v = c2;
+      } else if(ch===3){
+        v = ((c + (r%2)*2) % 4 < 2) ? c1 : 0;             // 锯齿（逐行错位条纹）
+      } else {
+        const h = (r*7 + c*13 + (CHAPTERS[ci].seed||11)) % 11;
+        if(h < 3) v = 1 + ((r*3 + c*5) % PALETTE.length); // 散点
+      }
+      row.push(v);
+    }
+    g.push(row);
+  }
+  return g;
+}
+// 本章已织格数（纯推导，不新增存档字段）：章内已完成关数（+1 表示本次刚完成的这一关）
+function tapestryLit(){
+  return Math.max(0, Math.min(64, (level-1) - chapterOf(level)*10 + 1));
+}
+// 胜利弹窗织图绘制：底格灰版 → 此前已织格立即点亮（从中心向外按距离序）→ 本次新增格 0.6s 逐格点亮
+function drawTapestry(cvs){
+  try{
+    const g = cvs.getContext && cvs.getContext("2d");
+    if(!g) return;
+    const cell = cvs.width/8;
+    if(!(cell>0)) return;
+    g.clearRect(0,0,cvs.width,cvs.height);
+    const grid = genTapestry(chapterOf(level));
+    const colOf = v => v>0 ? PALETTE[(v-1)%PALETTE.length] : "rgba(0,0,0,.07)";
+    const cells = [];
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++) cells.push({r,c,d:Math.abs(r-3.5)+Math.abs(c-3.5)});
+    cells.sort((a,b)=>a.d-b.d);          // 从中心向外点亮
+    const lit = tapestryLit();
+    const oldN = Math.max(0, lit-1);     // 此前已织格：立即点亮
+    for(let k=0;k<oldN;k++){
+      const q = cells[k];
+      g.fillStyle = colOf(grid[q.r][q.c]);
+      g.fillRect(q.c*cell, q.r*cell, cell-1, cell-1);
+    }
+    const step = 600 / Math.max(1, lit-oldN);
+    for(let k=oldN;k<lit;k++){
+      const q = cells[k];
+      const col = colOf(grid[q.r][q.c]);
+      setTimeout(()=>{                    // 本次新增格：0.6s 逐格点亮动画
+        try{
+          g.fillStyle = col;
+          g.fillRect(q.c*cell, q.r*cell, cell-1, cell-1);
+        }catch(e){}
+      }, Math.round((k-oldN)*step));
+    }
+  }catch(e){}
 }
 function render(){
   ctx.clearRect(0,0,W,H);
@@ -1220,7 +1377,16 @@ function onTap(px,py){
     pushHistory();
     const from = selected;
     const mv = moveCount(tubes, from, i);
+    // 归轴成轴（毛线主题，纯表现反馈）：本次落定使目标管从「非归轴」变为「归轴」时，
+    // 播放轻快双音 + 轻震动。判定只读状态，不改数值、不入撤销栈、不影响星级。
+    const wasSpooled = tubes[i].length===CAP && tubes[i].every(c=>c===tubes[i][0]);
     pour(tubes, from, i);   // 逻辑态立即更新，动画只负责表现
+    const nowSpooled = tubes[i].length===CAP && tubes[i].every(c=>c===tubes[i][0]);
+    if(!wasSpooled && nowSpooled){
+      beep(784,0.06,"triangle",0.05);
+      setTimeout(()=>beep(988,0.08,"triangle",0.05),90);
+      haptic(15);
+    }
     if(isWin(tubes)){ haptic([22,40,22]); winVibrated = true; } // 过关震动下沉到用户手势内(严格浏览器 rAF 回调未必触发)
     moves++;
     beep(660,0.07,"triangle",0.06); shh();   // 倒线团：短音+沙沙摩擦声（毛线主题期1）
@@ -1258,6 +1424,19 @@ function animStep(ts){
     requestAnimationFrame(animStep);
   }
 }
+// 倒球毛线拖尾（毛线主题，纯表现）：从源管口到飞行球当前位置的"拉出的毛线"，
+// quadraticCurveTo 控制点轻微下垂，globalAlpha 随飞行进度 0.7→0 渐隐，落定自然消失。
+function drawYarnTrail(sx, sy, ex, ey, lp, colorIdx){
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, 0.7*(1-Math.max(0,Math.min(1,lp))));
+  ctx.strokeStyle = PALETTE[colorIdx % PALETTE.length];
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  ctx.quadraticCurveTo((sx+ex)/2, Math.max(sy, ey) + 12, ex, ey);
+  ctx.stroke();
+  ctx.restore();
+}
 // 飞行中的球：沿二次贝塞尔从源管口弧线飞入目标管对应槽位
 function drawFlyingBalls(){
   if(!anim) return;
@@ -1280,6 +1459,7 @@ function drawFlyingBalls(){
     const mx=(sx+ex)/2;
     const x=(1-e)*(1-e)*sx + 2*(1-e)*e*mx + e*e*ex;
     const y=(1-e)*(1-e)*sy + 2*(1-e)*e*peak + e*e*ey;
+    drawYarnTrail(sx, sy, x, y, lp, anim.color);   // 拉出的毛线拖尾（纯表现，不动 anim 结构）
     drawBall(x, y, slot.ballR, anim.color);
   }
 }
@@ -1448,6 +1628,13 @@ function win(){
     document.getElementById("winShareText").textContent = dailyShareText();
     if(srow) srow.style.display = "";
   } else if(srow) srow.style.display = "none";
+  // 织图终点（毛线主题）：普通模式展示本章挂毯并点亮本次进度（新增格逐格点亮）；
+  // 每日织补不展示织图。纯表现层，已织格数由 level/chapterOf 推导，不新增存档字段。
+  const tcv = document.getElementById("tapestryCv");
+  if(tcv){
+    if(mode==="daily"){ tcv.style.display = "none"; }
+    else { tcv.style.display = "block"; drawTapestry(tcv); }
+  }
   document.getElementById("winOverlay").style.display="flex";
   refreshRail();
   render();
