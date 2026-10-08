@@ -611,6 +611,22 @@ function beep(freq, dur=0.08, type="sine", vol=0.06){
     o.start(t); o.stop(t+dur);
   }catch(e){}
 }
+// 沙沙声（毛线主题期1）：白噪声短脉冲过带通滤波，模拟线团滚落的摩擦声。零素材、WebAudio 合成。
+function shh(dur=0.14, vol=0.045){
+  if(muted) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const n = Math.max(1, Math.floor(actx.sampleRate*dur));
+    const buf = actx.createBuffer(1, n, actx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i] = (Math.random()*2-1)*(1-i/n);   // 线性衰减包络
+    const src = actx.createBufferSource(); src.buffer = buf;
+    const f = actx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 3200; f.Q.value = 0.9;
+    const g = actx.createGain(); g.gain.value = vol;
+    src.connect(f); f.connect(g); g.connect(actx.destination);
+    src.start();
+  }catch(e){}
+}
 
 /* ---------- 触觉反馈(零依赖，移动端震动；桌面端/不支持时静默降级) ---------- */
 // 仅在支持 Vibration API 的设备触发，桌面浏览器 navigator.vibrate 多为 undefined 或被忽略，安全无副作用
@@ -900,6 +916,20 @@ function drawTube(i){
   if(sk.fill){ ctx.fillStyle = sk.fill; ctx.fill(); }   // 默认皮肤不填充，保持原观感
   ctx.strokeStyle = selected===i ? "#3b7bff" : sk.stroke;
   ctx.stroke();
+  // 线轴化（毛线主题期1，纯外观不影响数值）：木质口沿 + 管身两条纵向刻槽
+  ctx.strokeStyle = "rgba(158,108,66,.85)";
+  ctx.lineWidth = 3.5;
+  ctx.beginPath();
+  ctx.moveTo(r.x-2, r.y+2); ctx.lineTo(r.x+r.w+2, r.y+2);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(0,0,0,.05)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(r.x+r.w*0.3, r.y+10); ctx.lineTo(r.x+r.w*0.3, r.y+r.h-10);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(r.x+r.w*0.7, r.y+10); ctx.lineTo(r.x+r.w*0.7, r.y+r.h-10);
+  ctx.stroke();
   // 球
   const skip = (anim && anim.to===i) ? anim.cnt : 0; // 飞行中的球由动画层绘制，此处隐藏
   for(let k=0;k<t.length;k++){
@@ -927,8 +957,8 @@ function drawTube(i){
       ctx.strokeStyle = "rgba(46,196,120,"+(0.28+0.34*pa).toFixed(3)+")";
       ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(r.x+4, r.y+5);
-      ctx.lineTo(r.x+r.w-4, r.y+5);
+      ctx.moveTo(r.x+4, r.y+7);
+      ctx.lineTo(r.x+r.w-4, r.y+7);
       ctx.stroke();
       ctx.restore();
     }
@@ -982,13 +1012,30 @@ function ballPos(r, idx){
   const cy = r.y + r.h - pad - ballR - idx*(ballR*2 + 1);
   return {cx, cy, ballR};
 }
+// 毛线主题期1：颜色加深工具（线团绕线纹理用同色加深 20%，保证与底色同色系、不破坏辨识度）
+function shade(hex, f){
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.round(((n>>16)&255)*f), g = Math.round(((n>>8)&255)*f), b = Math.round((n&255)*f);
+  return "rgb("+r+","+g+","+b+")";
+}
 function drawBall(cx, cy, ballR, color){
+  const R = ballR-1;
+  ctx.beginPath();
+  ctx.fillStyle = "rgba(0,0,0,.10)";
+  ctx.arc(cx, cy+R*0.15, R, 0, Math.PI*2); ctx.fill();   // 底部软阴影（立体感）
   ctx.beginPath();
   ctx.fillStyle = PALETTE[color];
-  ctx.arc(cx, cy, ballR-1, 0, Math.PI*2); ctx.fill();
+  ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.fill();          // 底色
+  const dk = shade(PALETTE[color], 0.80);
+  ctx.strokeStyle = dk;
+  ctx.lineWidth = Math.max(1, ballR*0.12);
+  ctx.beginPath();                                        // 绕线纹理×2：错位弧线模拟线团缠绕
+  ctx.arc(cx-R*0.18, cy-R*0.10, R*0.60, 0.7, 3.5); ctx.stroke();
   ctx.beginPath();
-  ctx.fillStyle = "rgba(255,255,255,.35)";
-  ctx.arc(cx-ballR*0.3, cy-ballR*0.3, ballR*0.35, 0, Math.PI*2); ctx.fill();
+  ctx.arc(cx+R*0.15, cy+R*0.18, R*0.50, 2.9, 5.8); ctx.stroke();
+  ctx.beginPath();                                        // 哑光高光（毛线材质，比原来弱）
+  ctx.fillStyle = "rgba(255,255,255,.25)";
+  ctx.arc(cx-ballR*0.32, cy-ballR*0.32, ballR*0.30, 0, Math.PI*2); ctx.fill();
 }
 function roundRect(x,y,w,h,r){
   ctx.beginPath();
@@ -1112,7 +1159,7 @@ function onTap(px,py){
     pour(tubes, from, i);   // 逻辑态立即更新，动画只负责表现
     if(isWin(tubes)){ haptic([22,40,22]); winVibrated = true; } // 过关震动下沉到用户手势内(严格浏览器 rAF 回调未必触发)
     moves++;
-    beep(660,0.07,"triangle",0.06);
+    beep(660,0.07,"triangle",0.06); shh();   // 倒线团：短音+沙沙摩擦声（毛线主题期1）
     selected=-1;
     startPourAnim(from, i, mv.color, mv.cnt);
     return;
