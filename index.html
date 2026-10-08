@@ -616,6 +616,7 @@ function beep(freq, dur=0.08, type="sine", vol=0.06){
 
 /* ---------- 触觉反馈(零依赖，移动端震动；桌面端/不支持时静默降级) ---------- */
 // 仅在支持 Vibration API 的设备触发，桌面浏览器 navigator.vibrate 多为 undefined 或被忽略，安全无副作用
+let winVibrated = false;   // 胜利震动是否已在本轮"用户手势内"触发，避免 rAF 回调里重复/不触发
 function haptic(p){
   try{ if(navigator && navigator.vibrate) navigator.vibrate(p); }catch(e){}
 }
@@ -1095,6 +1096,7 @@ function onTap(px,py){
     const from = selected;
     const mv = moveCount(tubes, from, i);
     pour(tubes, from, i);   // 逻辑态立即更新，动画只负责表现
+    if(isWin(tubes)){ haptic([22,40,22]); winVibrated = true; } // 过关震动下沉到用户手势内(严格浏览器 rAF 回调未必触发)
     moves++;
     beep(660,0.07,"triangle",0.06);
     selected=-1;
@@ -1278,7 +1280,8 @@ function assistNote(){
 }
 function win(){
   beep(880,0.12,"sine",0.07); setTimeout(()=>beep(1175,0.14,"sine",0.07),120);
-  haptic([22,40,22]);   // 过关：双段震动正反馈（桌面端静默降级）
+  if(!winVibrated) haptic([22,40,22]); // 过关：双段震动（手势内已触发则跳过，避免重复震动）
+  winVibrated = false;
   const st = calcStars();
   let reward;
   let extra = "";
