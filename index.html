@@ -343,10 +343,8 @@ let skinsOwned = {};          // 已拥有的管身皮肤 id 集合(纯外观)
 let skinEquipped = "default"; // 当前装备的管身皮肤 id
 let sawHelp = false;   // 是否已看过过关说明(首次进入自动弹一次)
 let sawLimitTip = false;  // 是否已提示过「限步」机制(首次进入限步关时场景化提示，取代塞进首进说明)
-// 新手引导：只在第 1~2 关演示一次「点源管 → 点目标管」。用绿色脉冲圆环(与蓝=选中、琥珀=提示区分)，
-// 画在管底安全区内。照做一次即写存档不再出现；没照做则静默退场，下次进前两关还会演示。
-let guide = {on:false, step:0, from:-1, to:-1};
-let guideDone = false;
+// (新手引导已按产品决策不做：原 guide/guideDone 脚手架属"声明未接线"死代码，本轮移除，
+//  旧存档里的 guideDone 字段读入时会被自然忽略，无需迁移)
 // 每日签到(连续签到, localStorage 持久化)
 let loginDate = "";        // 上次登录日期(本地 YYYY-M-D)
 let signStreak = 0;        // 连续签到天数(1..7 循环)
@@ -373,7 +371,7 @@ function load(){
   try{
     const s = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
     level = s.level || 1; coins = s.coins || 0;
-    bestStars = s.bestStars || {}; noAds = !!s.noAds; muted = !!s.muted; sawHelp = !!s.sawHelp; sawLimitTip = !!s.sawLimitTip; guideDone = !!s.guideDone;
+    bestStars = s.bestStars || {}; noAds = !!s.noAds; muted = !!s.muted; sawHelp = !!s.sawHelp; sawLimitTip = !!s.sawLimitTip;
     hintTickets = s.hintTickets || 0; undoTickets = s.undoTickets || 0;
     skinsOwned = s.skinsOwned || {}; skinEquipped = s.skinEquipped || "default";
     loginDate = s.loginDate||""; signStreak = s.signStreak||0; signClaimedDate = s.signClaimedDate||"";
@@ -909,15 +907,31 @@ function drawTube(i){
     const {cx, cy, ballR} = ballPos(r, k);
     drawBall(cx, cy, ballR, t[k]);
   }
-  // 选中态：管底上指箭头(呼吸)，明确"当前拿的是哪根"
+  // 选中态：管底上指箭头(呼吸+与呼吸同频的上下浮动)，明确"当前拿的是哪根"
   if(selected===i){
     const pa = pulseAlpha();
+    const bob = 2.5*Math.sin((nowMs()-pulseT0)/1000*5);   // 浮动幅度 ±2.5px，底部留白 36px 足够容纳
     const ax = r.x + r.w/2;
-    const ay = r.y + r.h + 9;
+    const ay = r.y + r.h + 9 + bob;
     ctx.fillStyle = "rgba(59,123,255,"+(0.55+0.35*pa).toFixed(3)+")";
     ctx.beginPath();
     ctx.moveTo(ax, ay-7); ctx.lineTo(ax-6, ay+3); ctx.lineTo(ax+7, ay+3);
     ctx.closePath(); ctx.fill();
+  }
+  // 选中态进阶：给"当前选中管的合法落点"画管口绿光下划线，引导"能倒到哪"。
+  // 视觉层级：蓝=选中 > 琥珀=提示 > 绿=合法落点；提示进行中时绿标整体让位，避免两套引导叠加。
+  if(selected>=0 && selected!==i && hintTarget<0 && !animating){
+    if(canPour(tubes, selected, i)){
+      const pa = pulseAlpha();
+      ctx.save();
+      ctx.strokeStyle = "rgba(46,196,120,"+(0.28+0.34*pa).toFixed(3)+")";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(r.x+4, r.y+5);
+      ctx.lineTo(r.x+r.w-4, r.y+5);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
   // 提示态：目标管加琥珀色虚线呼吸框 + 管口下指箭头（源管已由 selected 的蓝光晕标示）
   if(hintTarget===i){
