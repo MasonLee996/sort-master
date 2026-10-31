@@ -1,2121 +1,620 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>收纳大师 · 纯AI小游戏Demo</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>拾线铺 · Demo</title>
 <style>
-  :root{
-    --bg:#f3f5f9; --panel:#ffffff; --ink:#1f2733; --sub:#6b7686;
-    --line:#e4e8ef; --accent:#3b7bff; --accent2:#16c784; --warn:#ff5b6e;
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;}
-  #app{position:fixed;inset:0;max-width:520px;margin:0 auto;display:flex;flex-direction:column;height:100%;width:100%;}
-  header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--panel);
-    border-bottom:1px solid var(--line);}
-  .stat{flex:1;text-align:center;}
-  .stat .k{font-size:11px;color:var(--sub);}
-  .stat .v{font-size:16px;font-weight:700;}
-  #stage{flex:1;position:relative;overflow:hidden;}
-  canvas{display:block;width:100%;height:100%;touch-action:none;}
-  footer{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px;
-    background:var(--panel);border-top:1px solid var(--line);}
-  button.act{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;
-    padding:10px 4px;font-size:13px;font-weight:600;cursor:pointer;}
-  button.act:active{transform:scale(.96);}
-  button.act.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
-  button.act.gold{background:var(--accent2);color:#fff;border-color:var(--accent2);}
-  button.act[disabled]{opacity:.4;pointer-events:none;filter:grayscale(.3);}
-  .overlay{position:fixed;inset:0;background:rgba(20,28,40,.55);display:none;
-    align-items:center;justify-content:center;z-index:50;}
-  .card{background:#fff;border-radius:18px;padding:22px;width:80%;max-width:300px;text-align:center;
-    box-shadow:0 20px 60px rgba(0,0,0,.25);}
-  .card h2{margin:0 0 6px;font-size:22px;}
-  .card p{margin:4px 0;color:var(--sub);font-size:14px;}
-  .card .row{display:flex;gap:10px;margin-top:16px;}
-  .card button{flex:1;}
-  .stars{font-size:26px;letter-spacing:4px;margin:8px 0;}
-  .adbox{width:100%;height:120px;border-radius:12px;background:linear-gradient(135deg,#3b7bff,#16c784);
-    color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;}
-  .toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(31,39,51,.92);
-    color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .25s;z-index:30;pointer-events:none;}
-  .toast.show{opacity:1;}
-  button.help{width:36px;height:36px;flex:0 0 36px;border-radius:50%;border:1px solid var(--line);
-    background:#fff;color:var(--ink);font-size:17px;font-weight:800;cursor:pointer;line-height:1;}
-  .rules{margin:6px 0 0;padding-left:20px;text-align:left;}
-  .rules li{margin:9px 0;font-size:14px;line-height:1.65;}
-  .rules b{color:#3b7bff;}
-  #helpCard{max-height:82%;overflow-y:auto;}
-  /* 活动入口侧栏(留存/活跃/促销)：左右两列常驻入口，可滑动，点哪个开哪个 */
-  .rail{position:absolute;top:50%;transform:translateY(-50%);width:42px;max-height:66%;
-    display:flex;flex-direction:column;gap:8px;padding:2px;overflow-y:auto;overflow-x:hidden;
-    z-index:10;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none;}
-  .rail::-webkit-scrollbar{display:none;}
-  #railL{left:3px;} #railR{right:3px;}
-  .rail button{flex:0 0 auto;position:relative;border:1px solid var(--line);background:rgba(255,255,255,.94);
-    border-radius:12px;padding:5px 0 4px;font-size:9px;line-height:1.15;font-weight:600;color:var(--ink);
-    cursor:pointer;box-shadow:0 2px 6px rgba(20,28,40,.06);}
-  .rail button:active{transform:scale(.94);}
-  .rail button .ico{display:block;font-size:16px;line-height:1.25;}
-  .rail button .nm{display:block;}
-  .rail button .dot{display:none;position:absolute;top:3px;right:4px;width:7px;height:7px;border-radius:50%;
-    background:var(--warn);box-shadow:0 0 0 2px #fff;}
-  .rail button.hot{border-color:#ffd591;background:linear-gradient(180deg,#fff7e6,#fff);}
-  /* 未实现入口：预先置灰，避免"点进去才发现是预告"（点按行为不变，仍弹功能说明） */
-  .rail button.tbd{opacity:.45;}
-  /* 分享界面(GitHub Pages 链接 + 程序化海报) */
-  #shareCard{max-height:88%;overflow-y:auto;}
-  .linkbox{margin:10px 0;padding:10px;border:1px dashed var(--accent);border-radius:10px;font-size:12px;
-    color:var(--accent);word-break:break-all;background:#f5f8ff;cursor:pointer;line-height:1.5;}
-  .linkbox:active{transform:scale(.99);}
-  .sub{color:var(--sub);font-size:12px;margin:4px 0;}
-  #sharePoster{width:100%;border-radius:12px;border:1px solid var(--line);display:block;}
-  #sharePosterRow{display:none;margin-top:12px;}
-  #shareSaveRow{display:none;}
-  /* 道具商城(金币兑换)：列表可滚动，按钮沿用 .act / .act[disabled] 约定 */
-  #shopCard{max-height:88%;overflow-y:auto;}
-  .shoprow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eef1f6;text-align:left;}
-  .shoprow:last-child{border-bottom:none;}
-  .shoprow .info{flex:1;min-width:0;}
-  .shoprow .nm{font-size:14px;font-weight:700;}
-  .shoprow .ds{font-size:11px;color:var(--sub);line-height:1.45;}
-  .shoprow button.act{flex:0 0 86px;font-size:12px;padding:8px 2px;}
-  /* 限步关剩余步数告警：仅复用现有槽位，不新增常驻 stat */
-  .v.warn{color:var(--warn);}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;background:#f6ead8;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#4a3426;overflow:hidden}
+#app{position:relative;max-width:480px;height:100%;margin:0 auto;display:flex;flex-direction:column}
+canvas{display:block;width:100%;flex:1;touch-action:none}
+.top{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 4px;font-weight:700}
+.pill{background:#fff8ee;border:2px solid #e4cfb2;border-radius:20px;padding:4px 12px;font-size:14px}
+.bar{display:flex;gap:10px;justify-content:center;padding:8px 0 14px}
+.tool{position:relative;width:64px;height:64px;border-radius:18px;background:#fff8ee;border:2px solid #e4cfb2;font-size:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 3px 0 #d8bf9c}
+.tool small{font-size:11px;font-weight:700;margin-top:2px}
+.tool i{position:absolute;top:-6px;right:-6px;font-style:normal;background:#e85d5d;color:#fff;font-size:11px;border-radius:10px;padding:1px 6px}
+.tool.ad i{background:#4a90d9}
+.tool:active{transform:translateY(2px);box-shadow:0 1px 0 #d8bf9c}
+.mask{position:absolute;inset:0;background:rgba(60,40,25,.55);display:none;align-items:center;justify-content:center;z-index:10}
+.mask.on{display:flex}
+.card{width:84%;background:#fff8ee;border-radius:22px;padding:22px 18px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.25);animation:pop .25s ease}
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.card h2{font-size:22px;margin-bottom:8px}
+.card p{font-size:14px;line-height:1.6;margin:6px 0;color:#6b5040}
+.btn{display:block;width:100%;margin-top:10px;padding:12px;border:none;border-radius:14px;font-size:16px;font-weight:700;color:#fff;background:#e8834a;box-shadow:0 4px 0 #b8602e}
+.btn.blue{background:#4a90d9;box-shadow:0 4px 0 #2f6aa8}
+.btn.gray{background:#b9a690;box-shadow:0 4px 0 #8f7d68}
+.btn:active{transform:translateY(2px)}
+.story{background:#f3e3cc;border-radius:12px;padding:10px;margin-top:10px;text-align:left;font-size:13px;line-height:1.7}
+.story b{color:#c0582a}
+#shop{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0}
+#shop div{aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;background:#e8e0d6;filter:grayscale(1);opacity:.45;transition:.4s}
+#shop div.on{filter:none;opacity:1;background:#ffe9c7;transform:scale(1.05)}
+#orders{display:flex;gap:8px;padding:2px 10px 0;min-height:52px}
+.ord{flex:1;display:flex;align-items:center;gap:6px;background:#fff8ee;border:2px solid #e4cfb2;border-radius:14px;padding:4px 8px;transition:.25s}
+.ord .gst{font-size:26px}
+.ord .body{flex:1;display:flex;flex-direction:column;gap:3px}
+.ord .need{display:flex;gap:6px;flex-wrap:wrap}
+.ord .pat{height:5px;background:#eadbc6;border-radius:3px;overflow:hidden}
+.ord .pat i{display:block;height:100%;transition:width .2s}
+.ord.gone{opacity:.5;background:#f6dede;border-color:#e5a3a3}
+.ord .it{font-size:20px;display:flex;align-items:center;gap:2px}
+.ord .it b{font-size:12px;color:#8a6a50}
+.ord .rw{font-size:12px;font-weight:700;color:#c0812a}
+.ord.hit{transform:scale(1.06);border-color:#f2b134;background:#fff1c9}
+.ord.done{opacity:.55;background:#e6f4e2;border-color:#9fd09a}
+.toast{position:absolute;left:50%;top:22%;transform:translateX(-50%);background:rgba(60,40,25,.85);color:#fff;padding:8px 16px;border-radius:20px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:20}
+.toast.on{opacity:1}
 </style>
 </head>
 <body>
 <div id="app">
-  <header>
-    <div class="stat"><div class="k">关卡</div><div class="v" id="hudLevel">1</div></div>
-    <div class="stat"><div class="k" id="hudMovesK">步数</div><div class="v" id="hudMoves">0</div></div>
-    <div class="stat" id="hudStatCoins"><div class="k">金币</div><div class="v" id="hudCoins">0</div></div>
-    <div class="stat" id="hudStatStars"><div class="k">最佳</div><div class="v" id="hudStars">☆</div></div>
-    <div class="stat" id="hudStatAdd"><div class="k">加管</div><div class="v" id="hudAdd">0/3</div></div>
-    <button class="help" id="btnHelp" title="过关说明">?</button>
-  </header>
-  <div id="stage">
-    <canvas id="cv"></canvas>
-    <div class="toast" id="toast"></div>
-    <div class="rail" id="railL"></div>
-    <div class="rail" id="railR"></div>
-    <div class="overlay" id="winOverlay">
-      <div class="card">
-        <h2>过关！</h2>
-        <canvas id="tapestryCv" width="96" height="96" style="display:none;margin:8px auto 2px;border-radius:10px;border:1px solid var(--line);background:#fafbfd"></canvas>
-        <div class="stars" id="winStars">★★★</div>
-        <p id="winReward">+0 金币</p>
-    <p class="sub" id="winNote" style="display:none"></p>
-    <div class="row" id="winDoubleRow" style="display:none">
-      <button class="act gold" id="btnWinDouble" style="width:100%">看广告金币翻倍</button>
-    </div>
-    <div class="row">
-          <button class="act" id="btnReplay">重玩</button>
-          <button class="act primary" id="btnNext">下一关</button>
-        </div>
-        <div id="winShareRow" style="display:none;margin-top:12px">
-          <div class="linkbox" id="winShareText" title="点击复制">—</div>
-          <div class="row">
-            <button class="act primary" id="btnWinShare" style="width:100%">复制成绩分享</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="adOverlay">
-      <div class="card">
-        <h2 id="adTitle">广告</h2>
-        <div class="adbox" id="adBox">广告播放中…</div>
-        <p id="adHint" style="margin-top:10px">（Demo 模拟，真实环境替换为 wx.createRewardedVideoAd）</p>
-      </div>
-    </div>
-    <div class="overlay" id="helpOverlay">
-      <div class="card" id="helpCard">
-        <h2>过关说明</h2>
-        <ol class="rules">
-          <li><b>怎么操作</b>：点一根「源管」选中（变蓝高亮）→ 再点「目标管」倒过去。想换选择，点回原管取消。</li>
-          <li><b>什么情况能倒</b>：目标管<b>是空的</b>，或者目标管<b>顶部颜色和源管顶部相同</b>；一次会把源管顶部连着的同色球一起倒完（受目标管剩余空间限制）。</li>
-          <li><b>过关条件</b>：把每种颜色全部收进<b>同一根管</b>，做到<b>每根管里只剩一种颜色（或空着）</b>，即过关。</li>
-        </ol>
-        <ol class="rules" id="helpMore" start="4" style="display:none">
-          <li><b>卡住了怎么办</b>：底部「撤销」回退一步；「提示」会直接指出可行的下一步（蓝框 = 源管，琥珀框 = 目标管）。</li>
-          <li><b>步数限制</b>：第 7 关起有步数上限（本关参考解步数 ×1.35），顶部会常显<b>剩余 N 步</b>，剩 ≤5 步时变红告警；用完可看广告 <b>+5 步</b>（每关最多 2 次，去广告用户免费领取同奖励），或用金币 40 换 5 步。广告加步属辅助操作，本关最高只能拿 ★★。前期关卡不限步，看广告改为领金币。</li>
-          <li><b>星级怎么算</b>：<b>基准步数</b> = 本关参考解步数 ×1.15。<b>★★★</b> = 没用任何辅助（撤销 / 提示 / 广告加管 / 广告加步）<b>且</b>步数 ≤ 基准；<b>★★</b> = 没用辅助但步数<b>超过基准</b>，<b>或</b>用了辅助但步数 ≤ 基准；<b>★</b> = 其余（用了辅助且超过基准）。广告加步（看广告或金币兑换）同样计入辅助操作，本关最高 ★★，护星徽章可免。星越高金币越多。</li>
-          <li><b>步数超过基准会掉星</b>：即使一次辅助都没用，只要通关步数<b>超过基准步数</b>，最高也只有 ★★ —— 想拿 ★★★ 得既不碰辅助、又走得足够省。</li>
-          <li><b>护星徽章与商城</b>：右侧「🛒 商城」可用金币兑换<b>提示券 / 撤销券 / 护星徽章 / 管身皮肤</b>（只卖便利与外观，<b>不售卖任何数值</b>）。其中<b>护星徽章</b>本关生效：用了辅助也不掉星，仍按步数评星。</li>
-          <li><b>加管上限</b>：死局时看广告可加一根空管，<b>每关最多 3 次</b>，用满后只能撤销回退或重开本关 —— 避免无限加管把局面刷成"能过但没意思"。</li>
-          <li><b>难度怎么递进</b>：关卡越高，颜色越多、管越多、空管更少，逐步变难。</li>
-          <li><b>左右两侧的小按钮</b>：常驻入口栏（可上下滑动）。左侧是<b>签到</b>（连续 7 天阶梯奖励）、<b>每日谜题</b>（每天一道全服同一题面，不限步，首通 +60 金币）、<b>分享</b>（复制链接 / 生成海报，每日首次 +30 金币）；右侧是<b>商城</b>（金币兑换道具）、<b>首充 / 月卡 / 去广告</b>等。点哪个开哪个。</li>
-        </ol>
-        <div class="row">
-          <button class="act" id="btnHelpMore">查看完整规则</button>
-          <button class="act primary" id="btnHelpClose">知道了</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="deadOverlay">
-      <div class="card">
-        <h2>无路可走</h2>
-        <p>当前局面已经没有可倒的球了。</p>
-        <p class="sub" id="deadAddInfo">—</p>
-        <div class="row">
-          <button class="act" id="btnDeadUndo">撤销一步</button>
-          <button class="act gold" id="btnDeadAd">看广告加管</button>
-        </div>
-        <div class="row">
-          <button class="act" id="btnDeadRestart" style="width:100%">重开本关</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="exhaustedOverlay">
-      <div class="card">
-        <h2>步数用尽</h2>
-        <p>本关剩余步数已用完，但别担心——可以再看广告 / 花金币加 5 步，或直接重开本关。</p>
-        <p class="sub" id="exhaustedAddInfo">—</p>
-        <div class="row">
-          <button class="act" id="btnExhaustedUndo">撤销一步</button>
-          <button class="act gold" id="btnExhaustedAd">看广告 +5 步（剩 2 次）</button>
-        </div>
-        <div class="row">
-          <button class="act" id="btnExhaustedCoin">金币 40 换 5 步</button>
-        </div>
-        <div class="row">
-          <button class="act" id="btnExhaustedRestart" style="width:100%">重开本关</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="genOverlay">
-      <div class="card">
-        <h2>生成中…</h2>
-        <p>正在生成 <span id="genLv">第 1 关</span>（保证可解）</p>
-        <div class="row" style="justify-content:center">
-          <div class="adbox" style="height:60px;font-size:14px">关卡生成中</div>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="signOverlay">
-      <div class="card">
-        <h2>每日签到</h2>
-        <p>已连续签到 <span id="signStreak">1</span> 天</p>
-        <div class="row" id="signGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:10px 0"></div>
-        <p>今日奖励：<span id="signReward">+20</span> 金币</p>
-        <div class="row">
-          <button class="act primary" id="btnSignClaim" style="width:100%">领取</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="dailyOverlay">
-      <div class="card">
-        <h2>🧩 每日谜题</h2>
-        <p id="dailyDate">—</p>
-        <p id="dailyInfo">今日题面：—</p>
-        <p id="dailyStatus">今日尚未挑战</p>
-        <div class="row">
-          <button class="act" id="btnDailyClose">关闭</button>
-          <button class="act primary" id="btnDailyStart">开始挑战</button>
-        </div>
-        <div class="row" id="dailyExitRow" style="display:none">
-          <button class="act" id="btnDailyExit" style="width:100%">退出每日，回到闯关</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="shareOverlay">
-      <div class="card" id="shareCard">
-        <h2>📤 分享给好友</h2>
-        <p class="sub">把链接发给好友，点开即玩，无需下载</p>
-        <div class="linkbox" id="shareLinkBox" title="点击复制">—</div>
-        <div class="row">
-          <button class="act" id="btnShareCopy">复制链接</button>
-          <button class="act primary" id="btnSharePoster">生成海报</button>
-        </div>
-        <div id="sharePosterRow"><img id="sharePoster" alt="分享海报" /></div>
-        <div class="row" id="shareSaveRow">
-          <button class="act gold" id="btnShareSave" style="width:100%">保存海报图片</button>
-        </div>
-        <p class="sub" id="shareReward">每日首次分享 +30 金币</p>
-        <p class="sub">（Web 端为复制链接 / 保存海报；接入微信小游戏后替换为 wx.shareAppMessage）</p>
-        <div class="row">
-          <button class="act" id="btnShareClose" style="width:100%">关闭</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="entryOverlay">
-      <div class="card">
-        <h2><span id="entryIco">🎁</span> <span id="entryTitle">功能</span></h2>
-        <p id="entryDesc">敬请期待</p>
-        <div class="row">
-          <button class="act primary" id="btnEntryClose" style="width:100%">知道了</button>
-        </div>
-      </div>
-    </div>
-    <div class="overlay" id="shopOverlay">
-      <div class="card" id="shopCard">
-        <h2>🛒 道具商城</h2>
-        <p class="sub">用金币兑换便利与外观，不售卖任何数值</p>
-        <div id="shopList"></div>
-        <p class="sub" id="shopCoins">持有金币：0</p>
-        <div class="row">
-          <button class="act primary" id="btnShopClose" style="width:100%">关闭</button>
-        </div>
-      </div>
-    </div>
+  <div class="top"><span class="pill" id="lvTxt">第 1 关</span><span class="pill" id="leftTxt">剩 0</span><span class="pill">⭐ <b id="starTxt">0</b> · 🪙 <b id="coinTxt">0</b></span></div>
+  <div id="orders"></div>
+  <canvas id="cv"></canvas>
+  <div class="bar">
+    <div class="tool" id="tShake">🧺<small>抖篮</small><i>1</i></div>
+    <div class="tool" id="tBack">↩️<small>退回</small><i>1</i></div>
+    <div class="tool" id="tPeek">👁️<small>透视</small><i>1</i></div>
+    <div class="tool" id="tShop">🏠<small>线铺</small></div>
   </div>
-  <footer>
-    <button class="act" id="btnUndo">撤销</button>
-    <button class="act" id="btnHint">提示</button>
-    <button class="act" id="btnRestart">重开</button>
-    <button class="act gold" id="btnAd">+5步/广告</button>
-  </footer>
-  <footer style="grid-template-columns:1fr;border-top:none;padding-top:0;">
-    <button class="act" id="btnMute">🔊 音效</button>
-  </footer>
+  <div class="mask" id="mask"><div class="card" id="card"></div></div>
+  <div class="toast" id="toast"></div>
 </div>
 <script>
 "use strict";
-/* ============================================================
-   收纳大师 Sort Puzzle —— 纯AI生成 · 零美术依赖 · 程序化关卡
-   逻辑可直接平移至 Cocos Creator / 微信小游戏
-   ============================================================ */
+/* ====== 拾线铺 Demo：堆叠拾取 + 7 格线篮三消 + 线铺修复/剧情 ====== */
+const COLORS = [
+  {c:"#e85d5d",d:"#b83b3b",n:"红"},{c:"#4a90d9",d:"#2f6aa8",n:"蓝"},{c:"#f2b134",d:"#c4861a",n:"黄"},
+  {c:"#5fae6a",d:"#3d8549",n:"绿"},{c:"#9b6fd0",d:"#7349a8",n:"紫"},{c:"#f08cb4",d:"#c9638c",n:"粉"},
+  {c:"#3fbfbf",d:"#258f8f",n:"青"},{c:"#8a5a3c",d:"#603a22",n:"棕"},{c:"#ff8a3d",d:"#cc6420",n:"橙"},
+  {c:"#7d8a99",d:"#55606d",n:"灰"}
+];
+// 关卡表：colors 颜色数, triples 组数(每组3个), layers 层数, mix 交错度(越大越难), cols/rows 网格
+const LEVELS = [
+  {colors:3, triples:4,  layers:2, mix:0, cols:4, rows:4},   // 1 教学必过
+  {colors:9, triples:27, layers:6, mix:6, cols:6, rows:7},   // 2 卡点关（抓大鹅式）裸玩≈29%
+  {colors:4, triples:8,  layers:3, mix:1, cols:5, rows:5},
+  {colors:5, triples:11, layers:3, mix:2, cols:5, rows:6},
+  {colors:6, triples:15, layers:4, mix:3, cols:6, rows:6},
+  {colors:5, triples:12, layers:3, mix:2, cols:5, rows:6},
+  {colors:7, triples:18, layers:4, mix:2, cols:6, rows:7},   // 7  ≈66%
+  {colors:7, triples:20, layers:4, mix:4, cols:6, rows:7},   // 8  ≈80%（喘口气，体量更大）
+  {colors:7, triples:21, layers:5, mix:4, cols:6, rows:7},   // 9  ≈53%
+  {colors:9, triples:25, layers:6, mix:5, cols:6, rows:7}    // 10 章末 Boss ≈13%
+];
+const SLOT_N = 7;      // 开局线篮格数（生成器按 7 格保证有解）
+const SLOT_MAX = 9;    // 完成订单每单 +1 格，上限 9
+const SHOP = [
+  {ico:"🪧",n:"招牌",cost:1},{ico:"🪑",n:"木椅",cost:1},{ico:"🧶",n:"线团架",cost:2},{ico:"🪟",n:"窗帘",cost:2},
+  {ico:"🕯️",n:"烛台",cost:2},{ico:"🧵",n:"织机",cost:3},{ico:"🐈‍⬛",n:"猫窝",cost:3},{ico:"🖼️",n:"挂毯",cost:4}
+];
+const STORY = [
+  "<b>奶奶：</b>孩子，灰雾把镇上的颜色都拆成了线……这间线铺，就交给你了。",
+  "<b>奶奶：</b>织机还能转！只是……昨晚好像有只黑猫叼走了一团红线。",
+  "<b>神秘客人：</b>（推门，斗篷上沾着灰雾）\"我要一条能挡住灰雾的围巾。三天后来取。\"",
+  "<b>奶奶：</b>黑猫的窝里……怎么会有你爷爷当年的织针？<br><i>—— 第一章完 · 未完待续 ——</i>"
+];
 
-const CAP = 4;                 // 每管容量
-const MAX_ADD_TUBES = 3;       // 死局加管次数上限(死局出口，防无限制加管破坏体验与步数基准)
-const AD_BOOST_MAX = 2;        // 单关「加步」次数上限(看广告 +5 步 / 金币换步 共用，防无限加步把限步架空)
-const PALETTE = ["#ff5b6e","#3b7bff","#16c784","#ffb020","#a259ff",
-                 "#00c2c7","#ff7a45","#7c8cff","#e84393","#2dce89"];
-// 管身皮肤(纯外观，不影响任何数值)。default 的 fill=null → 不填充，保持原观感。
-const SKINS = {
-  default: {name:"默认管身", fill:null,                   stroke:"#cdd5e0"},
-  frosted: {name:"磨砂管身", fill:"#eef2f8",              stroke:"#c3ccd9"},
-  glass:   {name:"玻璃管身", fill:"rgba(210,226,255,.35)", stroke:"#9fbcf2"},
-  wood:    {name:"木纹管身", fill:"#f6ead8",              stroke:"#c9a678"}
+/* ---------- 存档（try/catch 防无痕模式） ---------- */
+const SAVE_KEY = "shixianpu_demo_v1";
+let save = {level:1, stars:0, coins:0, bought:[]};
+try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s) save = Object.assign(save, s); }catch(e){}
+function persist(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){} }
+
+/* ---------- 随机源 ---------- */
+let seed = 1;
+function rnd(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+/* ---------- 情境：具体物件（按形状认，不靠颜色）+ 每关一个"事故现场" ---------- */
+const ITEMS = ["🧶","🧦","🧤","🧣","🎀","🧸","✂️","🧵","🧷","👒"];
+const TALES = [
+  {t:"黑猫打翻了针线筐", s:"奶奶刚出门，黑猫就把筐掀了……趁她回来前收拾好！"},
+  {t:"赶集日大混乱", s:"客人把整筐货翻得乱七八糟，全镇只有 23% 的人收拾完过。"},
+  {t:"晾线绳断了", s:"一阵风，刚晾好的线全掉进了筐里。"},
+  {t:"奶奶的嫁妆箱", s:"翻出了几十年前的老物件，小心别弄坏。"},
+  {t:"神秘客人的订单", s:"斗篷客要的东西全混在这一筐里了。"},
+  {t:"雨夜漏水", s:"屋顶漏雨，赶紧把筐里的东西抢救出来！"},
+  {t:"黑猫又来了", s:"它好像在筐底藏了什么东西……"},
+  {t:"灰雾压境", s:"灰雾飘进铺子，东西都在褪色，快！"},
+  {t:"织机大扫除", s:"织机底下扫出了一整筐零碎。"},
+  {t:"黑猫的老巢", s:"终于找到黑猫的窝了，满满一筐偷来的东西！"}
+];
+const CAT_LINES = {
+  start:["喵～这筐是我弄乱的","你收拾不完的喵","嘿嘿，慢慢找吧"],
+  danger:["喵嘿嘿，要满咯！","快不行了吧～","再拿错一个试试？"],
+  combo:["喵？！","运气好而已喵","哼……"],
+  lose:["喵哈哈哈哈！","就这？","明天再来吧喵～"],
+  win:["喵！？不可能！","下次没这么简单！","哼，算你厉害"]
 };
 
-// 关卡曲线表（难度唯一出口）：lv → {colors, empties, cap, labeled}
-// 设计：第 1 关为手工教程关；第 2~9 关每关 +1 色（≈×1.38/关，近似指数）；
-//       第 10 关起 colors 封顶 10（PALETTE 上限），改由 P3(CAP)/P4(标注管) 接力。
-// 注意：cap/labeled 本期【不消费】，仅作为 P3/P4 的预留列，先填默认值。
-const LEVEL_CURVE = [
-  { colors: 2,  empties: 2, cap: 4, labeled: 0 },  // lv 1（教程关，题面手工写死）
-  { colors: 3,  empties: 2, cap: 4, labeled: 0 },  // lv 2
-  { colors: 4,  empties: 2, cap: 4, labeled: 0 },  // lv 3
-  { colors: 5,  empties: 2, cap: 4, labeled: 0 },  // lv 4
-  { colors: 6,  empties: 2, cap: 4, labeled: 0 },  // lv 5
-  { colors: 7,  empties: 2, cap: 4, labeled: 0 },  // lv 6
-  { colors: 8,  empties: 2, cap: 4, labeled: 0 },  // lv 7
-  { colors: 9,  empties: 2, cap: 4, labeled: 0 },  // lv 8
-  { colors: 10, empties: 2, cap: 4, labeled: 0 },  // lv 9 及以后（colors 封顶）
-];
-// 越界钳制：lv<1 取第 1 行，lv>表长 取最后一行
-function levelParams(lv){
-  const i = Math.max(1, Math.min(lv|0, LEVEL_CURVE.length)) - 1;
-  return LEVEL_CURVE[i];
+/* ---------- 遮挡判定：自由散落，圆形重叠 + 高层压低层 ---------- */
+// tile: x,y ∈ [0,1]（筐内归一化坐标），r 归一化半径，rot 旋转，z 层
+function overlap(a,b){ const dx=a.x-b.x, dy=a.y-b.y, k=(a.r+b.r)*.82; return dx*dx+dy*dy < k*k; }
+function isCovered(t, list){ for(const o of list){ if(o!==t && o.alive && o.z>t.z && overlap(o,t)) return true; } return false; }
+// 退回 / 复活：把物件撒回筐顶
+function pushBack(list, colors){
+  const top = list.reduce((m,t)=>Math.max(m,t.z),0)+1, r = list[0] ? list[0].r : .08;
+  colors.forEach((c,i)=>list.push({x:.3+i*.2, y:.18+(i%2)*.05, r, rot:(i-1)*.4, z:top, alive:true, color:c, id:list.length}));
 }
 
-const cv = document.getElementById("cv");
-const ctx = cv.getContext("2d");
-const stage = document.getElementById("stage");
-
-let DPR = 1, W = 0, H = 0;
-let tubes = [];               // 每管 = 颜色索引数组(底->顶)
-let tubeRects = [];           // 绘制矩形(逻辑坐标)
-let selected = -1;
-let hintTarget = -1;   // 提示态：建议倒入的目标管索引(-1=无)，与 selected(源管) 配合高亮
-let hintPair = null;   // 提示态：[源管, 目标管]，非 null 即提示进行中
-let level = 1, moves = 0, coins = 0;
-let bestStars = {};           // level->stars
-let moveLimit = 0;            // 0=无限
-let refSteps = 0;             // 本关参考解步数(生成时 DFS 首解长度)：限步与星级 par 的基准
-let shielded = false;         // 本关是否持有护星徽章(单关生效，startLevel/startDaily 均归零)
-let history = [];             // 撤销栈
-let usedUndo = false, usedHint = false; // 本关是否用过撤销/提示(影响评级)
-let addedTubes = 0;                     // 本关通过广告加管次数(上限 MAX_ADD_TUBES，同样影响三星评级)
-let baseTubes = 0;                      // 本关生成时的管数(不含广告加管)；撤销时据此把付费加管补回来
-let adStepsUsed = 0;                    // 本关通过「看广告/金币」加步次数(上限 AD_BOOST_MAX，计入辅助→最高★★)
-let winBaseReward = 0;                  // 本次结算的基础金币(「看广告翻倍」再补一份，不重复计发)
-let winDoubled = false;                 // 本次结算是否已翻倍(防连点重复领取)
-let winExtra = "";                      // 本次结算奖励的后缀文案(如「（每日谜题首通）」)，翻倍后文案要带上
-let boardSnapshot = null;               // 当前关初始题面快照(深拷贝)，供「重开本关」复用同一题面
-let noAds = false;
-let muted = false;
-let hintTickets = 0;          // 提示券库存：使用提示时优先消耗，消耗则该次提示不计入辅助(不掉星)
-let undoTickets = 0;          // 撤销券库存：撤销时优先消耗，消耗则该次撤销不计入辅助(不掉星)
-let skinsOwned = {};          // 已拥有的管身皮肤 id 集合(纯外观)
-let skinEquipped = "default"; // 当前装备的管身皮肤 id
-let sawHelp = false;   // 是否已看过过关说明(首次进入自动弹一次)
-let sawLimitTip = false;  // 是否已提示过「限步」机制(首次进入限步关时场景化提示，取代塞进首进说明)
-// (新手引导已按产品决策不做：原 guide/guideDone 脚手架属"声明未接线"死代码，本轮移除，
-//  旧存档里的 guideDone 字段读入时会被自然忽略，无需迁移)
-// 每日签到(连续签到, localStorage 持久化)
-let loginDate = "";        // 上次登录日期(本地 YYYY-M-D)
-let signStreak = 0;        // 连续签到天数(1..7 循环)
-let signClaimedDate = "";  // 已领取奖励的日期
-let pendingSign = false;   // 今日是否待领取
-let todayReward = 0;       // 今日签到奖励额
-const SIGN_REWARDS = [0,20,25,30,40,50,60,100]; // 第 1..7 天奖励(超 7 循环回 1)
-let anim = null;        // 倒球动画状态 {from,to,color,cnt,t,dur,last}
-let animating = false;  // 动画期间锁定输入，保证可回滚且不串状态
-let RAIL_PAD = 48;      // 左右活动入口侧栏占位宽度(0=不占位，供后续收起功能使用)
-// 每日谜题(按日期定种子，全服同一题面)
-let mode = "normal";       // 当前模式："normal"=线性闯关 / "daily"=每日谜题
-let dailyDate = "";        // 当前正在玩的每日题面日期
-let dailyDoneDate = "";    // 每日谜题已通关的日期(每天只发一次首通奖励)
-let dailyMoves = 0;        // 每日谜题首通步数
-// 分享(GitHub Pages 托管)
-let shareClaimedDate = ""; // 每日首次分享奖励的领取日期
-const SHARE_BONUS = 30;                                              // 每日首次分享奖励金币
-const GH_PAGES_URL = "https://masonlee996.github.io/sort-master/";   // 线上地址(file:// 或本地预览时使用)
-
-/* ---------- 存档 ---------- */
-const SAVE_KEY = "sort_ai_save_v1";
-function load(){
-  try{
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || "{}");
-    level = s.level || 1; coins = s.coins || 0;
-    bestStars = s.bestStars || {}; noAds = !!s.noAds; muted = !!s.muted; sawHelp = !!s.sawHelp; sawLimitTip = !!s.sawLimitTip;
-    hintTickets = s.hintTickets || 0; undoTickets = s.undoTickets || 0;
-    skinsOwned = s.skinsOwned || {}; skinEquipped = s.skinEquipped || "default";
-    loginDate = s.loginDate||""; signStreak = s.signStreak||0; signClaimedDate = s.signClaimedDate||"";
-    dailyDoneDate = s.dailyDoneDate||""; dailyMoves = s.dailyMoves||0;
-    shareClaimedDate = s.shareClaimedDate||"";
-  }catch(e){}
-}
-function save(){
-  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({level,coins,bestStars,noAds,muted,sawHelp,sawLimitTip,hintTickets,undoTickets,skinsOwned,skinEquipped,loginDate,signStreak,signClaimedDate,dailyDoneDate,dailyMoves,shareClaimedDate})); }catch(e){}
-}
-
-/* ---------- 每日签到(连续签到, 7 天阶梯) ---------- */
-function dateStr(d){ d=d||new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
-function parseDate(s){ const p=(""+s).split("-"); return new Date(+p[0], (+p[1]||1)-1, +p[2]||1); }
-function dayDiff(a,b){ return Math.round((parseDate(b)-parseDate(a))/86400000); }
-function detectSign(){
-  const today = dateStr();
-  if(signClaimedDate === today) return;                 // 今天已领
-  if(loginDate === today){ pendingSign = true; todayReward = SIGN_REWARDS[Math.min(signStreak,7)]; return; }
-  const gap = loginDate ? dayDiff(loginDate, today) : 999;
-  signStreak = (gap===1) ? (signStreak>=7?1:signStreak+1) : 1; // 连续+1(第7后循环)；断签/首次=1
-  todayReward = SIGN_REWARDS[Math.min(signStreak,7)];
-  pendingSign = true; loginDate = today; save();
-}
-function closeSign(){ document.getElementById("signOverlay").style.display = "none"; }
-// 按钮随领取态切换：未领=「领取」主按钮，已领=「关闭」次级按钮 —— 保证任何状态都能关掉弹窗
-function syncSignBtn(){
-  const claimed = (signClaimedDate === dateStr());
-  const btn = document.getElementById("btnSignClaim");
-  if(btn){
-    btn.textContent = claimed ? "关闭" : "领取";
-    btn.className = claimed ? "act" : "act primary";
-  }
-}
-function showSign(){
-  document.getElementById("signStreak").textContent = signStreak;
-  document.getElementById("signReward").textContent = "+"+todayReward;
-  const claimed = (signClaimedDate === dateStr());
-  const grid = document.getElementById("signGrid");
-  if(grid){
-    grid.textContent = "";
-    for(let d=1; d<=7; d++){
-      const c = document.createElement("div");
-      c.style.cssText = "border-radius:8px;padding:6px 0;font-size:11px;text-align:center;line-height:1.4;white-space:pre-line;";
-      c.textContent = "第"+d+"天\n+"+SIGN_REWARDS[d];
-      if(d < signStreak || (d===signStreak && claimed)) c.style.background="rgba(22,199,132,.18)";
-      else if(d===signStreak && pendingSign) c.style.background="rgba(59,123,255,.20)";
-      else c.style.background="#eef1f6";
-      grid.appendChild(c);
-    }
-  }
-  syncSignBtn();
-  document.getElementById("signOverlay").style.display = "flex";
-}
-function claimSign(){
-  if(!pendingSign){ closeSign(); return; }   // 已领取：此时按钮是「关闭」
-  coins += todayReward; save();
-  signClaimedDate = dateStr(); pendingSign = false; save();
-  closeSign(); syncSignBtn();
-  refreshRail();
-  render(); toast("签到 +"+todayReward+" 金币");
-}
-
-/* ---------- 每日谜题：入口弹窗 + 进入/退出 ---------- */
-const DAILY_FIRST_BONUS = 60; // 每日首通额外金币
-function showDaily(){
-  const ds = dateStr();
-  const done = (dailyDoneDate === ds);
-  const c = dailyColors(ds);
-  document.getElementById("dailyDate").textContent = "题面日期：" + ds + "（全服同一关）";
-  document.getElementById("dailyInfo").textContent = "今日题面：" + c + " 色 " + (c + 2) + " 管 · 不限步";
-  document.getElementById("dailyStatus").textContent = done
-    ? ("✅ 今日已通关（" + dailyMoves + " 步）· 首通奖励已领取，明天再来")
-    : ("首次通关奖励 +" + DAILY_FIRST_BONUS + " 金币 · 每天 0 点换题");
-  document.getElementById("btnDailyStart").textContent = done ? "再玩一次" : "开始挑战";
-  // 已在每日模式时才显示"退出"入口，避免误导
-  document.getElementById("dailyExitRow").style.display = (mode==="daily") ? "flex" : "none";
-  document.getElementById("dailyOverlay").style.display = "flex";
-}
-function startDaily(){
-  const ds = dateStr();
-  dailyDate = ds;
-  mode = "daily";
-  const my = ++genToken;
-  // 与 startLevel 同一套自适应遮罩逻辑
-  const needMask = genMsLast > GEN_MASK_MS;
-  if(needMask) showGenMask("每日谜题 " + ds);
-  const build = ()=>{
-    if(my !== genToken) return;
-    tubes = genDaily(ds);
-    refSteps = genStats.refSteps;  // 每日题面的参考步数(生成时记录)，供星级基准使用
-    shielded = false;              // 护星徽章单关生效：切每日谜题同样归零
-    clearHint(true);
-    selected=-1; moves=0; history=[];
-    usedUndo=false; usedHint=false; addedTubes=0; adStepsUsed=0;
-    baseTubes = tubes.length;      // 记录初始管数，撤销时据此补回付费加管
-    snapBoard();                   // 缓存初始题面快照（每日题面按日期定种子，重开=同题面）
-    syncDeadAdBtn();
-    moveLimit = 0;                 // 每日谜题不限步：鼓励反复尝试与分享
-    hideDeadlock(); hideGenMask();
-    layout(); render();
-    toast("每日谜题 · " + ds);
-  };
-  if(needMask) setTimeout(build, 0); else build();
-}
-
-/* ---------- 分享界面：GitHub Pages 链接 + 程序化海报(零素材) ---------- */
-// 线上取当前地址(GitHub Pages 域名)，本地/离线时回落到已发布的 Pages 地址
-function shareUrl(){
-  try{
-    if(/^https?:/.test(location.protocol)) return location.href.split("#")[0].split("?")[0];
-  }catch(e){}
-  return GH_PAGES_URL;
-}
-// 每日谜题成绩文案：日期 + 步数（每日模式胜利弹窗展示，链接一律走 shareUrl()）
-function dailyShareText(){
-  const ds = dailyDate || dateStr();
-  const p = parseDate(ds);
-  return (p.getMonth()+1) + " 月 " + p.getDate() + " 日每日谜题，我用 " + moves + " 步通关，来比比？";
-}
-function fbCopy(t){   // 无剪贴板权限时的兜底(document.execCommand)
-  try{
-    const ta = document.createElement("textarea");
-    ta.value = t; ta.style.position="fixed"; ta.style.top="-1000px"; ta.style.opacity="0";
-    document.body.appendChild(ta); ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return !!ok;
-  }catch(e){ return false; }
-}
-function copyText(t){
-  return new Promise(res=>{
-    try{
-      if(navigator && navigator.clipboard && navigator.clipboard.writeText){
-        navigator.clipboard.writeText(t).then(()=>res(true)).catch(()=>res(fbCopy(t)));
-        return;
-      }
-    }catch(e){}
-    res(fbCopy(t));
-  });
-}
-function rewardShare(){   // 每日首次分享发金币(纯活跃激励，非数值售卖)
-  if(shareClaimedDate === dateStr()) return;
-  shareClaimedDate = dateStr(); coins += SHARE_BONUS; save();
-  refreshShareText(); render();
-  toast("分享成功 +" + SHARE_BONUS + " 金币");
-}
-function refreshShareText(){
-  const el = document.getElementById("shareReward");
-  if(!el) return;
-  el.textContent = (shareClaimedDate === dateStr())
-    ? ("✅ 今日分享奖励已领取（+" + SHARE_BONUS + " 金币，明日再来）")
-    : ("每日首次分享 +" + SHARE_BONUS + " 金币");
-}
-function showShare(){
-  document.getElementById("shareLinkBox").textContent = shareUrl();
-  document.getElementById("sharePosterRow").style.display = "none";
-  document.getElementById("shareSaveRow").style.display = "none";
-  refreshShareText();
-  document.getElementById("shareOverlay").style.display = "flex";
-  // 小游戏端：wx.shareAppMessage({ title:"收纳大师", imageUrl: 海报 }) —— 接入 SDK 后替换
-}
-// 海报：纯程序化绘制(渐变底 + 关卡示意 + 链接)，零图片素材
-function rrect(g,x,y,w,h,r){
-  g.beginPath(); g.moveTo(x+r,y);
-  g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
-  g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
-}
-function makePoster(){
-  const CW = 480, CH = 720, D = 2;
-  const c = document.createElement("canvas");
-  c.width = CW*D; c.height = CH*D;
-  const g = c.getContext("2d");
-  g.setTransform(D,0,0,D,0,0);
-  const FONT = "-apple-system,'PingFang SC','Microsoft YaHei',sans-serif";
-  // 背景渐变
-  const bg = g.createLinearGradient(0,0,CW,CH);
-  bg.addColorStop(0,"#3b7bff"); bg.addColorStop(1,"#16c784");
-  g.fillStyle = bg; g.fillRect(0,0,CW,CH);
-  // 白卡
-  rrect(g,24,24,CW-48,CH-48,26); g.fillStyle="rgba(255,255,255,.97)"; g.fill();
-  // 标题
-  g.textAlign="center"; g.fillStyle="#1f2733";
-  g.font="bold 40px "+FONT;  g.fillText("收纳大师", CW/2, 112);
-  g.font="15px "+FONT; g.fillStyle="#6b7686";
-  g.fillText("纯 AI 生成的 H5 小游戏 · 点开即玩，无需下载", CW/2, 142);
-  // 关卡示意：3 根管子(与游戏中同款绘制)
-  const tubeW=74, tubeH=200, gap=26, ty=182;
-  const x0 = (CW - (tubeW*3 + gap*2))/2;
-  const demo = [[0,0,1,2],[1,2,2,0],[1,1,2,0]];
-  for(let i=0;i<3;i++){
-    const x = x0 + i*(tubeW+gap);
-    rrect(g, x, ty, tubeW, tubeH, 18);
-    g.fillStyle="#fff"; g.fill();
-    g.strokeStyle="#cdd5e0"; g.lineWidth=3; g.stroke();
-    const ballR = Math.min((tubeW-14)/2, (tubeH-14)/(CAP*2));
-    for(let k=0;k<demo[i].length;k++){
-      const cx = x + tubeW/2;
-      const cy = ty + tubeH - 8 - ballR - k*(ballR*2+1);
-      g.beginPath(); g.fillStyle = PALETTE[demo[i][k]]; g.arc(cx,cy,ballR-1,0,Math.PI*2); g.fill();
-      g.beginPath(); g.fillStyle = "rgba(255,255,255,.35)"; g.arc(cx-ballR*0.3, cy-ballR*0.3, ballR*0.35, 0, Math.PI*2); g.fill();
-    }
-  }
-  // 玩法一句话
-  g.fillStyle="#1f2733"; g.font="bold 17px "+FONT;
-  g.fillText("点选管子搬运同色，每管只剩一种颜色即过关", CW/2, 428);
-  // 操作指引
-  g.font="14px "+FONT; g.fillStyle="#6b7686";
-  g.fillText("① 复制下方链接发给好友   ② 好友打开链接即可开玩", CW/2, 462);
-  // 链接框
-  let fs = 14, u = shareUrl();
-  do { g.font = "bold "+fs+"px "+FONT; fs--; } while(fs > 8 && g.measureText(u).width > CW-48-92-24);
-  g.font = "bold "+(fs+1)+"px "+FONT;
-  rrect(g, 48, 488, CW-96, 62, 12);
-  g.fillStyle="#f5f8ff"; g.fill();
-  g.setLineDash([7,6]); g.strokeStyle="#3b7bff"; g.lineWidth=2; g.stroke(); g.setLineDash([]);
-  g.fillStyle="#3b7bff"; g.fillText(u, CW/2, 526);
-  // 底部
-  g.fillStyle="#9aa4b2"; g.font="12px "+FONT;
-  g.fillText("GitHub Pages 托管 · 每日谜题全服同题 · 连续签到领金币", CW/2, 596);
-  g.fillText("生成于 " + dateStr(), CW/2, 620);
-  g.textAlign="left";
-  return c.toDataURL("image/png");
-}
-
-/* ---------- 音效(程序化合成, 零素材) ---------- */
-let actx = null;
-function beep(freq, dur=0.08, type="sine", vol=0.06){
-  if(muted) return;
-  try{
-    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
-    const o = actx.createOscillator(), g = actx.createGain();
-    o.type = type; o.frequency.value = freq;
-    g.gain.value = vol; o.connect(g); g.connect(actx.destination);
-    const t = actx.currentTime;
-    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    o.start(t); o.stop(t+dur);
-  }catch(e){}
-}
-// 沙沙声（毛线主题期1）：白噪声短脉冲过带通滤波，模拟线团滚落的摩擦声。零素材、WebAudio 合成。
-function shh(dur=0.14, vol=0.045){
-  if(muted) return;
-  try{
-    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
-    const n = Math.max(1, Math.floor(actx.sampleRate*dur));
-    const buf = actx.createBuffer(1, n, actx.sampleRate);
-    const d = buf.getChannelData(0);
-    for(let i=0;i<n;i++) d[i] = (Math.random()*2-1)*(1-i/n);   // 线性衰减包络
-    const src = actx.createBufferSource(); src.buffer = buf;
-    const f = actx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 3200; f.Q.value = 0.9;
-    const g = actx.createGain(); g.gain.value = vol;
-    src.connect(f); f.connect(g); g.connect(actx.destination);
-    src.start();
-  }catch(e){}
-}
-
-/* ---------- 触觉反馈(零依赖，移动端震动；桌面端/不支持时静默降级) ---------- */
-// 仅在支持 Vibration API 的设备触发，桌面浏览器 navigator.vibrate 多为 undefined 或被忽略，安全无副作用
-let winVibrated = false;   // 胜利震动是否已在本轮"用户手势内"触发，避免 rAF 回调里重复/不触发
-function haptic(p){
-  try{ if(navigator && navigator.vibrate) navigator.vibrate(p); }catch(e){}
-}
-
-/* ---------- 关卡生成(随机填充 + 求解器校验保证可解) ---------- */
-function clone(s){ return s.map(t=>t.slice()); }
-function isWin(s){
-  return s.every(t => t.length===0 || t.every(c=>c===t[0]));
-}
-function canPour(s,i,j){
-  if(i===j) return false;
-  const a=s[i], b=s[j];
-  if(a.length===0) return false;
-  if(b.length>=CAP) return false;
-  if(b.length>0 && b[b.length-1]!==a[a.length-1]) return false;
-  return true;
-}
-function pour(s,i,j){
-  const a=s[i], b=s[j];
-  const color=a[a.length-1];
-  let k=a.length-1;
-  while(k>=0 && a[k]===color && b.length<CAP) { b.push(a.pop()); k--; }
-}
-// 计算本次可倒入的数量与颜色(不改状态)，供动画使用
-function moveCount(s,i,j){
-  const a=s[i], b=s[j];
-  const color=a[a.length-1];
-  let cnt=0, k=a.length-1;
-  while(k>=0 && a[k]===color && b.length+cnt<CAP) { cnt++; k--; }
-  return {color, cnt};
-}
-function key(s){ return s.map(t=>t.join(",")).sort().join("|"); }
-// 是否还存在任意合法移动(用于死局检测)
-function hasAnyMove(s){
-  for(let i=0;i<s.length;i++){
-    if(s[i].length===0) continue;
-    for(let j=0;j<s.length;j++){
-      if(canPour(s,i,j)) return true;
-    }
-  }
-  return false;
-}
-
-// DFS 求解器：返回 {first, steps} 或 null。
-//   first = 当前局面的合法首步(提示用，语义/取值与旧版完全一致)
-//   steps = 该解的步数(DFS 首解上界)。生成时据此记录关卡参考步数 refSteps，作为限步/星级基准。
-function solve(start, capNodes=200000){
-  const visited = new Set();
-  let nodes = 0;
-  let bestFirst = null;
-  let bestSteps = 0;   // 首次到达胜利局面时的深度 = 该解的步数
-  function dfs(s, depth){
-    if(nodes++ > capNodes) return false;
-    if(isWin(s)){ bestSteps = depth; return true; }
-    const k = key(s);
-    if(visited.has(k)) return false;
-    visited.add(k);
-    for(let i=0;i<s.length;i++){
-      if(s[i].length===0) continue;
-      for(let j=0;j<s.length;j++){
-        if(canPour(s,i,j)){
-          const ns = clone(s); pour(ns,i,j);
-          if(dfs(ns, depth+1)){
-            // 只记录「根节点」这一步：递归是从最深层往上返回的，
-            // 若不限定 depth===0，bestFirst 会被最深层（最后一步）抢先写入，
-            // 导致提示给出的是终局前的最后一步，对当前局面往往是非法的。
-            if(depth===0 && bestFirst===null) bestFirst=[i,j];
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
-  const ok = dfs(clone(start),0);
-  // 返回值：first = 根节点那一步（提示用，语义/取值不变）；steps = DFS 首解上界（限步/星级基准，不变）；
-  //        nodes = DFS 内部访问计数器最终值（新增，作为"求解器回溯规模"难度度量，仅供诊断/探针使用）。
-  return ok ? {first:bestFirst, steps:bestSteps, nodes: nodes} : null;
-}
-
-function randomFill(colors, empties, rnd){
-  rnd = rnd || Math.random;   // 可注入随机源：每日谜题用日期种子，保证全服同一题面
-  const total = colors + empties;
-  let s = [];
-  for(let i=0;i<colors;i++) s.push([]);
-  for(let i=0;i<empties;i++) s.push([]);
-  const balls = [];
-  for(let c=0;c<colors;c++) for(let n=0;n<CAP;n++) balls.push(c);
-  // 洗牌
-  for(let i=balls.length-1;i>0;i--){ const j=(rnd()*(i+1))|0; [balls[i],balls[j]]=[balls[j],balls[i]]; }
-  // 从「未满管」里等概率取一根放球。
-  // 旧实现是随机试 50 次、失败就把这颗球静默丢掉：一旦丢球，某色只有 CAP-1 颗，
-  // 而 isWin 判定「整管同色」并不要求管满 → 会出现"少一颗也通关"的畸形关卡。
-  // 维护 free 列表后既保证球数恒为 colors*CAP，也省掉了拒绝采样的空转。
-  const free = [];
-  for(let t=0;t<total;t++) free.push(t);
-  for(const b of balls){
-    const k = (rnd()*free.length)|0;
-    const t = free[k];
-    s[t].push(b);
-    if(s[t].length >= CAP){ free[k] = free[free.length-1]; free.pop(); }
-  }
-  return s;
-}
-
-/* 生成预算：分阶段尝试 —— 先用"空管更少(更难)"的目标空管数试一小段，
-   实在找不到再逐级加空管兜底。旧实现是在同一个空管数上死磕 200 次才加空管，
-   而 10 色 1 空管时随机填充几乎不可能通过 solve 校验，等于白白烧掉 200 次 DFS
-   （实测 ~160ms/关，低端机 1s+）才走到"加空管"这条本来就必然走的路。 */
-// 生成预算：分阶段尝试。空管数依次为 base+0 / base+1（**上限 +1**，即 D12 收口）。
-// 实测依据(probe_d12_fallback.js，基准空管=2，每色数 150 次采样)：
-//   各色数下「阶段 0(+0 空管)」即 100% 成功，极端兜底率 0% —— 故把空管兜底上限收到 +1 安全，
-//   无需旧实现的 +2(400 次) 长尾。阶段 0 已够用，极端兜底分支仅作安全网(须可观测，见 genStats.fallback)。
-// 注意：预算只用「尝试次数」(不用墙钟)，否则每日谜题会因设备性能不同而题面漂移、破坏全服一致性。
-const GEN_STAGES = [40, 160];     // 各阶段的"累计尝试数"上限；空管数依次为 base+0 / base+1（上限 +1）
-const GEN_MASK_MS = 60;            // 上次生成超过该耗时，下次才先出遮罩让出主线程
-let genMsLast = 0;                 // 上一次生成耗时(ms)，用于自适应决定要不要遮罩
-// 最近一次生成的诊断信息(尝试次数/耗时/最终空管数、颜色数与参考解步数)，便于定位高阶关卡卡顿
-//   dfsNodes  = 求解器回溯规模(难度度量)；fallback = 是否走到极端兜底(观测题面是否退化)
-const genStats = { tries: 0, ms: 0, empties: 0, colors: 0, refSteps: 0, dfsNodes: 0, fallback: false };
-// 随机填充 + solve 校验，保证可解；rnd 可选(每日谜题注入日期种子)
-function fillSolvable(colors, baseEmpties, rnd){
-  const t0 = nowMs();
-  let tries = 0, empties = baseEmpties, s = null, ref = 0, solNodes = 0;
-  for(let st=0; st<GEN_STAGES.length && !s; st++){
-    empties = baseEmpties + st;
-    const cap = GEN_STAGES[st];
-    while(tries < cap){
-      tries++;
-      const cand = randomFill(colors, empties, rnd);
-      // 必须「还没排好」才算合格题面。isWin 只要每根管"空或单色"即为真，
-      // 所以随机填充有概率直接给出已完成局面(实测 2 色 2 空管时约 3%)：
-      // 这种题面下 win() 不会触发(只在移动后判定)，玩家看到的是"已经摆好却不通关"的坏关。
-      // 第 1、2 关正好是 2 色，等于新手前两关就有 ~3% 概率踩到，故在此拦掉。
-      if(isWin(cand)) continue;
-      const sol = solve(cand);
-      if(sol){ s = cand; ref = Math.max(1, sol.steps||0); solNodes = sol.nodes||0; break; }  // 记录该题面的参考解步数 + 回溯规模
-    }
-  }
-  if(!s){ // 极端兜底：从"已排好"退一步，保证既非已完成、也必定有解(1 步可解)。
-    // 注意：此分支是安全网，正常路径(实测兜底率 0%)不会走到；走到即意味着题面退化，必须可观测(genStats.fallback)。
-    s = []; for(let c=0;c<colors;c++) s.push(Array(CAP).fill(c));
-    for(let e=0;e<empties;e++) s.push([]);
-    if(empties > 0){ const last = s.length-1; s[last].push(s[0].pop()); }
-    ref = 1; solNodes = 0;
-    genStats.fallback = true;
-  } else {
-    genStats.fallback = false;
-  }
-  genStats.tries = tries; genStats.ms = nowMs()-t0;
-  genStats.empties = empties; genStats.colors = colors;
-  genStats.refSteps = ref;
-  genStats.dfsNodes = solNodes;
-  genMsLast = genStats.ms;
-  return s;
-}
-// 第 1 关教程题面（手工写死，不做随机生成）：2 色 8 球，开局非完成态，参考解由 solve() 实测给出。
-// 满足不变量：球数 = colors×CAP = 8；!isWin。
-// 设计意图的解法（非唯一，求解器可能给出更短路径）：底管顶部 1 倒入空管 →
-//   另一管顶部 0 倒回底管(4 满) → 剩下的 1,1,1 倒入空管。
-// 重要：refSteps 一律由 solve() 计算得出（禁止硬编码），verify 会校验「refSteps == solve(题面).steps」。
-const TUTORIAL_BOARD = [[0,0,0,1],[1,1,1,0],[],[]];
-let TUTORIAL_REFS = 0;   // 由 solve() 实测得出，禁止硬编码后不校验
-function tutorialLevel(){
-  const t0 = nowMs();
-  const sol = solve(clone(TUTORIAL_BOARD));          // 单一出口：参考步数由求解器给出，不手写
-  TUTORIAL_REFS = sol ? Math.max(1, sol.steps||0) : 0;
-  genStats.tries = 0; genStats.ms = nowMs()-t0;
-  genStats.empties = 2; genStats.colors = 2;
-  genStats.refSteps = TUTORIAL_REFS;
-  genStats.dfsNodes = sol ? (sol.nodes||0) : 0;
-  genStats.fallback = false;
-  genMsLast = genStats.ms;
-  return { tubes: clone(TUTORIAL_BOARD), refSteps: TUTORIAL_REFS };   // 必须 clone，禁止返回共享数组
-}
+/* ---------- 生成：先摆位置 → 模拟一条"合法拾取序列" → 按序列分配颜色（保证有解） ---------- */
 function genLevel(lv){
-  const p = levelParams(lv);
-  if (lv === 1) return tutorialLevel();     // 第 1 关：手工教程关
-  const g = fillSolvable(p.colors, p.empties);
-  return { tubes: g, refSteps: genStats.refSteps };   // 一并带上参考步数，供限步/星级基准使用
+  const P = LEVELS[Math.min(lv, LEVELS.length) - 1];
+  const total = P.triples * 3;
+  for(let attempt=0; attempt<200; attempt++){
+    seed = lv*7919 + attempt*104729 + 13;
+    // 1) 自由散落成"一座小山"：中心高、边缘低，随机旋转 —— 像真的倒了一筐东西
+    const tiles = [];
+    const r0 = .095 - Math.min(.035, total*.0005);
+    for(let i=0;i<total;i++){
+      const z = Math.floor(i * P.layers / total);           // 层号（越后越高）
+      const spread = .46 - z/P.layers*.22;                   // 高层更集中在中间 → 堆成小山
+      const a = rnd()*Math.PI*2, d = Math.sqrt(rnd())*spread;
+      tiles.push({x:.5+Math.cos(a)*d, y:.52+Math.sin(a)*d*.78, r:r0*(.9+rnd()*.25), rot:(rnd()-.5)*1.4, z, alive:true, color:-1, id:i});
+    }
+    if(tiles.length !== total){ if(typeof DBG!=="undefined") DBG.layout++; continue; }
+    // 2) 模拟拾取顺序：每步从"当前未被遮挡"的格子里随机取一个
+    const order = [];
+    while(order.length < total){
+      const free = tiles.filter(t => t.alive && !isCovered(t, tiles));
+      if(!free.length) break;
+      const t = free[Math.floor(rnd()*free.length)];
+      t.alive = false; order.push(t);
+    }
+    if(order.length !== total) continue;
+    // 3) 颜色序列：triples 组按色循环，再做窗口内交错（mix 越大越乱）
+    // 构造式颜色序列：模拟线篮，保证"按 order 拾取"时篮内峰值 ≤ LIMIT（必有解）
+    const LIMIT = SLOT_N - 1;
+    const remain = []; for(let i=0;i<P.triples;i++){ const col=i%P.colors; remain[col]=(remain[col]||0)+3; }
+    const seq = []; const open = {}; let inSlot = 0, peak = 0, ok = true;
+    for(let k=0;k<total;k++){
+      const openCols = Object.keys(open).map(Number).filter(c=>open[c]>0);
+      const fresh = remain.map((v,c)=>c).filter(c=>remain[c]>0 && !(open[c]>0));
+      // mix 越大，越倾向开新色（篮子越挤）；篮满前强制补齐已开色
+      const canOpen = fresh.length && inSlot + 3 <= LIMIT; // 开新色后最坏再补 2 个即可凑齐
+      const pOpen = openCols.length ? Math.min(.85, .15 + P.mix*.14) : 1;
+      let col;
+      if(canOpen && (rnd() < pOpen || !openCols.length)) col = fresh[Math.floor(rnd()*fresh.length)];
+      else if(openCols.length){ openCols.sort((a,b)=>open[b]-open[a]); col = (inSlot + 2 > LIMIT || rnd()<.5) ? openCols[0] : openCols[Math.floor(rnd()*openCols.length)]; }
+      else { ok=false; break; }
+      seq.push(col); remain[col]--; open[col]=(open[col]||0)+1; inSlot++;
+      peak = Math.max(peak, inSlot);
+      if(open[col]===3){ open[col]=0; inSlot-=3; }
+    }
+    if(!ok || peak > LIMIT){ if(typeof DBG!=="undefined") DBG.color++; continue; }
+    order.forEach((t,i)=>{ t.color = seq[i]; });
+    tiles.forEach(t => t.alive = true);
+    return {tiles, P, attempt, peak};
+  }
+  throw new Error("genLevel failed " + lv);
 }
-function colorCount(s){
-  const set = new Set();
-  s.forEach(t=>t.forEach(c=>set.add(c)));
-  return set.size;
-}
+if(typeof module !== "undefined") window.__m = {genLevel, isCovered, pushBack, LEVELS, SLOT_N, SLOT_MAX, ITEMS};
 
-/* ---------- 每日谜题：按日期定种子 → 全服同一题面(可 PK / 可分享) ---------- */
-// FNV-1a 字符串散列 + mulberry32 PRNG：零依赖、同日期必得同一序列
-function hashSeed(str){
-  let h = 2166136261 >>> 0;
-  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
-  return h >>> 0;
-}
-function mulberry32(a){
-  return function(){
-    a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const DAILY_SALT = "SORT-DAILY-";
-function dailyColors(ds){ return 5 + Math.floor(mulberry32(hashSeed(DAILY_SALT+ds))() * 3); } // 5~7 色
-function genDaily(ds){
-  const rnd = mulberry32(hashSeed(DAILY_SALT+ds));
-  const colors = 5 + Math.floor(rnd()*3);   // 与 dailyColors 同源，保证"预告=实际"
-  // 与普通关卡同一套预算(必须可解)，且用日期种子 rnd → 尝试次数确定，全服同题面
-  return fillSolvable(colors, 2, rnd);
-}
+/* ====== 渲染 & 交互 ====== */
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let W=0, H=0, DPR=1, cell=0, ox=0, oy=0, slotY=0, slotW=0;
+let tiles=[], P=null, slot=[], flying=[], fx=[], state="play", peekT=0, shakeT=0;
+let tools={shake:1, back:1, peek:1}, revived=false, level=save.level;
 
-/* ---------- 布局与绘制 ---------- */
-function resize(){
-  DPR = Math.min(window.devicePixelRatio||1, 2);
-  const r = stage.getBoundingClientRect();
-  const vw = window.innerWidth || 360, vh = window.innerHeight || 640;
-  W = Math.max(200, Math.round(r.width) || vw);
-  H = Math.max(240, Math.round(r.height) || (vh - 130));
-  cv.width = Math.max(1, W*DPR); cv.height = Math.max(1, H*DPR);
-  cv.style.width = W+"px"; cv.style.height = H+"px";
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  layout();
-  render();
-}
-function showFatal(msg){
+/* ---------- 音效（WebAudio 合成） ---------- */
+let AC=null;
+function beep(f, d, type, vol, slide){
   try{
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height);
-    ctx.fillStyle="#ff5b6e"; ctx.font="16px sans-serif";
-    ctx.fillText("运行错误: "+msg, 14, 34);
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(), g=AC.createGain(), t=AC.currentTime;
+    o.type=type||"sine"; o.frequency.setValueAtTime(f,t);
+    if(slide) o.frequency.exponentialRampToValueAtTime(slide, t+d);
+    g.gain.setValueAtTime(vol||.15,t); g.gain.exponentialRampToValueAtTime(.001,t+d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t+d);
   }catch(e){}
 }
-window.addEventListener("error", e=>{ showFatal((e&&e.message)||"unknown"); });
+const SFX = {
+  pick(){ beep(520,.08,"triangle",.12,780); },
+  match(n){ beep(660+n*40,.12,"sine",.18); setTimeout(()=>beep(990+n*40,.18,"sine",.15),70); },
+  warn(){ beep(140,.18,"square",.06); },
+  lose(){ beep(400,.5,"sawtooth",.08,120); },
+  win(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.22,"triangle",.16),i*110)); },
+  shake(){ beep(200,.3,"sawtooth",.05,600); }
+};
+function vibrate(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} }
+
+/* ---------- 布局 ---------- */
 function layout(){
-  const n = tubes.length;
-  const marginX = 16 + RAIL_PAD, marginTop = 18, marginBot = 36; // 预留左右活动入口栏安全区，保证管子不被压住
-  const availW = W - marginX*2;
-  const availH = H - marginTop - marginBot;
-  let perRow = Math.ceil(Math.sqrt(n* (availW/availH) ));
-  perRow = Math.max(1, Math.min(perRow, n));
-  let rows = Math.ceil(n/perRow);
-  // 管尺寸
-  let tw = (availW - (perRow-1)*12)/perRow;
-  tw = Math.min(tw, 78); tw = Math.max(tw, 36);
-  // 高度自适应：优先让整块塞进可用高度，避免被最小高度挤出屏幕
-  let th = (availH - (rows-1)*14)/rows;
-  th = Math.min(th, 200, CAP*30 + 14);
-  th = Math.max(th, 40);
-  const rowH = th+14;
-  const blockH = rows*rowH - 14;
-  let startY = marginTop + Math.max(0, (availH-blockH)/2);
-  const blockW = perRow*tw + (perRow-1)*12;
-  let startX = (W-blockW)/2;
-  tubeRects = [];
-  for(let i=0;i<n;i++){
-    const r = Math.floor(i/perRow), c = i%perRow;
-    const x = startX + c*(tw+12);
-    const y = startY + r*rowH;
-    tubeRects.push({x,y,w:tw,h:th});
-  }
+  DPR = Math.min(2, window.devicePixelRatio||1);
+  const r = cv.getBoundingClientRect(); W=r.width; H=r.height;
+  cv.width = W*DPR; cv.height = H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(!P) return;
+  slotW = Math.min(W-24, 420);
+  const slotH = slotW/SLOT_MAX;
+  slotY = H - slotH - 14;
+  // 筐（场景主体）：顶部留 70px 给黑猫与对白
+  const top = 70, bot = slotY - 18;
+  cell = Math.min(W - 16, (bot - top) * 1.15);          // 筐的宽度
+  ox = (W - cell)/2; oy = top;
+  BASKET = {x:ox, y:top, w:cell, h:bot-top};
 }
-function drawTube(i){
-  const r = tubeRects[i];
-  const t = tubes[i];
-  // 选中态：呼吸光晕(背景)
-  if(selected===i){
-    const pa = pulseAlpha();
-    ctx.fillStyle = "rgba(59,123,255,"+(0.10+0.18*pa).toFixed(3)+")";
-    roundRect(r.x-6,r.y-6,r.w+12,r.h+12,16); ctx.fill();
-  }
-  // 管身（皮肤为纯外观：仅改变管身底色/描边，不影响任何数值）
-  const sk = SKINS[skinEquipped] || SKINS.default;
-  ctx.lineWidth = 3;
-  // 圆角底，顶部开口
-  const rad = 14;
-  ctx.beginPath();
-  ctx.moveTo(r.x, r.y);
-  ctx.lineTo(r.x, r.y+r.h-rad);
-  ctx.quadraticCurveTo(r.x, r.y+r.h, r.x+rad, r.y+r.h);
-  ctx.lineTo(r.x+r.w-rad, r.y+r.h);
-  ctx.quadraticCurveTo(r.x+r.w, r.y+r.h, r.x+r.w, r.y+r.h-rad);
-  ctx.lineTo(r.x+r.w, r.y);
-  if(sk.fill){ ctx.fillStyle = sk.fill; ctx.fill(); }   // 默认皮肤不填充，保持原观感
-  ctx.strokeStyle = selected===i ? "#3b7bff" : sk.stroke;
-  ctx.stroke();
-  // 线轴化（毛线主题期1，纯外观不影响数值）：木质口沿 + 管身两条纵向刻槽
-  ctx.strokeStyle = "rgba(158,108,66,.85)";
-  ctx.lineWidth = 3.5;
-  ctx.beginPath();
-  ctx.moveTo(r.x-2, r.y+2); ctx.lineTo(r.x+r.w+2, r.y+2);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(0,0,0,.05)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(r.x+r.w*0.3, r.y+10); ctx.lineTo(r.x+r.w*0.3, r.y+r.h-10);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(r.x+r.w*0.7, r.y+10); ctx.lineTo(r.x+r.w*0.7, r.y+r.h-10);
-  ctx.stroke();
-  // 归轴成轴（毛线主题融合，纯表现层）：整管满轴且同色 → 管身横向绕线纹理 + 管口线头小结。
-  // 判定只读 tubes[i]，不改 isWin/任何数值、不入撤销栈、不影响评级。
-  const spooled = t.length===CAP && t.every(c=>c===t[0]);
-  if(spooled){
-    const scol = shade(PALETTE[t[0]], 0.8);
-    ctx.strokeStyle = scol;
-    ctx.lineWidth = 2;
-    for(let s=0;s<3;s++){                          // 3 条横向绕线弧（与线团纹理语言一致）
-      const yy = r.y + r.h*(0.32 + s*0.18);
-      ctx.beginPath();
-      ctx.arc(r.x + r.w/2, yy, r.w*0.32, 0.15*Math.PI, 0.85*Math.PI);
-      ctx.stroke();
-    }
-    ctx.beginPath();                               // 线头小结：管口一颗小实心圆
-    ctx.fillStyle = scol;
-    ctx.arc(r.x + r.w/2, r.y + 7, Math.max(2, r.w*0.07), 0, Math.PI*2);
-    ctx.fill();
-  }
-  // 球
-  const skip = (anim && anim.to===i) ? anim.cnt : 0; // 飞行中的球由动画层绘制，此处隐藏
-  for(let k=0;k<t.length;k++){
-    if(k >= t.length - skip) continue;
-    const {cx, cy, ballR} = ballPos(r, k);
-    drawBall(cx, cy, ballR, t[k]);
-  }
-  // 选中态：管底上指箭头(呼吸+与呼吸同频的上下浮动)，明确"当前拿的是哪根"
-  if(selected===i){
-    const pa = pulseAlpha();
-    const bob = 2.5*Math.sin((nowMs()-pulseT0)/1000*5);   // 浮动幅度 ±2.5px，底部留白 36px 足够容纳
-    const ax = r.x + r.w/2;
-    const ay = r.y + r.h + 9 + bob;
-    ctx.fillStyle = "rgba(59,123,255,"+(0.55+0.35*pa).toFixed(3)+")";
-    ctx.beginPath();
-    ctx.moveTo(ax, ay-7); ctx.lineTo(ax-6, ay+3); ctx.lineTo(ax+7, ay+3);
-    ctx.closePath(); ctx.fill();
-  }
-  // 选中态进阶：给"当前选中管的合法落点"画管口绿光下划线，引导"能倒到哪"。
-  // 视觉层级：蓝=选中 > 琥珀=提示 > 绿=合法落点；提示进行中时绿标整体让位，避免两套引导叠加。
-  if(selected>=0 && selected!==i && hintTarget<0 && !animating){
-    if(canPour(tubes, selected, i)){
-      const pa = pulseAlpha();
-      ctx.save();
-      ctx.strokeStyle = "rgba(46,196,120,"+(0.28+0.34*pa).toFixed(3)+")";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(r.x+4, r.y+7);
-      ctx.lineTo(r.x+r.w-4, r.y+7);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-  // 提示态：目标管加琥珀色虚线呼吸框 + 管口下指箭头（源管已由 selected 的蓝光晕标示）
-  if(hintTarget===i){
-    const pa = pulseAlpha();
-    ctx.save();
-    ctx.setLineDash([7,5]);
-    ctx.strokeStyle = "rgba(255,138,0,"+(0.55+0.40*pa).toFixed(3)+")";
-    ctx.lineWidth = 3;
-    roundRect(r.x-5, r.y-5, r.w+10, r.h+10, 16);
-    ctx.stroke();
-    ctx.restore();
-    const tx = r.x + r.w/2, ty = r.y - 10;
-    ctx.fillStyle = "rgba(255,138,0,"+(0.65+0.35*pa).toFixed(3)+")";
-    ctx.beginPath();
-    ctx.moveTo(tx, ty+7); ctx.lineTo(tx-6, ty-3); ctx.lineTo(tx+7, ty-3);
-    ctx.closePath(); ctx.fill();
-  }
-  // 限步关提示：满管锁标
-}
-/* ---------- 选中态呼吸光(持续轻量 rAF) ---------- */
-let pulseOn = false, pulseT0 = 0;
-function nowMs(){ return (typeof performance!=="undefined" && performance.now) ? performance.now() : Date.now(); }
-function pulseAlpha(){ const t=(nowMs()-pulseT0)/1000; return 0.5+0.5*Math.sin(t*5); }
-function startPulse(){
-  if(pulseOn) return;
-  pulseOn = true; pulseT0 = nowMs();
-  requestAnimationFrame(pulseTick);
-}
-function pulseTick(){
-  // 选中态或提示态任一存在都要继续脉动；两者都消失才停 rAF
-  if(selected<0 && hintTarget<0){ pulseOn=false; render(); return; }
-  render();
-  requestAnimationFrame(pulseTick);
-}
-// 提示态统一出口。quiet=true 用于切关等"马上要重排 layout"的场合，避免用旧 tubeRects 多画一帧
-function clearHint(quiet){
-  clearTimeout(clearHint._t);
-  if(hintTarget<0 && !hintPair) return;
-  hintTarget = -1; hintPair = null;
-  if(!quiet) render();
-}
-// 计算单球在管内的屏幕圆心与半径
-function ballPos(r, idx){
-  const pad=5;
-  const innerW = r.w - pad*2;
-  const ballR = Math.min(innerW/2, (r.h-pad*2)/(CAP*2));
-  const cx = r.x + r.w/2;
-  const cy = r.y + r.h - pad - ballR - idx*(ballR*2 + 1);
-  return {cx, cy, ballR};
-}
-// 毛线主题期1：颜色加深工具（线团绕线纹理用同色加深 20%，保证与底色同色系、不破坏辨识度）
-function shade(hex, f){
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.round(((n>>16)&255)*f), g = Math.round(((n>>8)&255)*f), b = Math.round((n&255)*f);
-  return "rgb("+r+","+g+","+b+")";
-}
-function drawBall(cx, cy, ballR, color){
-  const R = ballR-1;
-  ctx.beginPath();
-  ctx.fillStyle = "rgba(0,0,0,.10)";
-  ctx.arc(cx, cy+R*0.15, R, 0, Math.PI*2); ctx.fill();   // 底部软阴影（立体感）
-  ctx.beginPath();
-  ctx.fillStyle = PALETTE[color];
-  ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.fill();          // 底色
-  const dk = shade(PALETTE[color], 0.80);
-  ctx.strokeStyle = dk;
-  ctx.lineWidth = Math.max(1, ballR*0.12);
-  ctx.beginPath();                                        // 绕线纹理×2：错位弧线模拟线团缠绕
-  ctx.arc(cx-R*0.18, cy-R*0.10, R*0.60, 0.7, 3.5); ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx+R*0.15, cy+R*0.18, R*0.50, 2.9, 5.8); ctx.stroke();
-  ctx.beginPath();                                        // 哑光高光（毛线材质，比原来弱）
-  ctx.fillStyle = "rgba(255,255,255,.25)";
-  ctx.arc(cx-ballR*0.32, cy-ballR*0.32, ballR*0.30, 0, Math.PI*2); ctx.fill();
-}
-function roundRect(x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
-}
-// 底部「广告」按钮文案的唯一同步出口。
-// 非限步关(第 1~6 关)点它实际拿到的是 +10 金币(见 grantAdBoost)，旧实现文案写死「+5步/广告」
-// → 玩家看到的承诺与拿到的东西不符。限步关达上限时直接置灰，避免"点了才被告知用完"。
-function syncAdBtn(){
-  const b = document.getElementById("btnAd");
-  if(!b) return;
-  if(moveLimit > 0){
-    const left = AD_BOOST_MAX - adStepsUsed;
-    if(left <= 0){ b.textContent = "加步已用完"; b.disabled = true; }
-    else { b.textContent = "+5步/广告"; b.disabled = false; }
-  } else {
-    b.textContent = "+10金币/广告";
-    b.disabled = false;
-  }
-}
-// HUD 分级：新手期(非每日模式 且 第 3 关及以前)只显示「关卡 + 步数」，
-// 避免「金币 0」「最佳 ☆」「加管 0/3」这些当下无意义的信息挤满首屏(首进认知过载的第 106 轮修复项)。
-function syncHudStat(){
-  const rookie = (mode !== "daily" && level <= 3);
-  ["hudStatCoins","hudStatStars","hudStatAdd"].forEach(function(id){
-    const el = document.getElementById(id);
-    if(el) el.style.display = rookie ? "none" : "";
-  });
-}
-/* ---------- 章节场景背景（毛线世界，纯外观）：渐变天空 + 晾线绳/线团篮/乱线剪影，按本章织造进度灰→彩恢复 ---------- */
-// 5 章色板：天空上/下、远/近剪影（hex+透明度）、强调色、确定性种子（织图散点用）。
-// 全部浅粉彩——保证默认管描边(#cdd5e0)与文字的对比度不被破坏。
-const CHAPTERS = [
-  {name:"晨光线坊", skyTop:"#fdf3e3", skyBot:"#f7dfc4", silFar:"#d6b28c", silFarA:.30, silNear:"#be9468", silNearA:.34, accent:"#e8a15c", phase:1.2, seed:11},
-  {name:"雨后晾线场", skyTop:"#eaf5ee", skyBot:"#d5ecdd", silFar:"#94c4a6", silFarA:.30, silNear:"#6aac8a", silNearA:.34, accent:"#5fae87", phase:2.6, seed:23},
-  {name:"海风染坊", skyTop:"#e8f2fb", skyBot:"#cfe4f6", silFar:"#88b2dc", silFarA:.30, silNear:"#6498c8", silNearA:.34, accent:"#4a90d9", phase:4.1, seed:37},
-  {name:"黄昏灯市", skyTop:"#fbeee2", skyBot:"#f3d3c0", silFar:"#e2a482", silFarA:.30, silNear:"#cd8269", silNearA:.34, accent:"#e07840", phase:5.4, seed:51},
-  {name:"星夜天窗", skyTop:"#e9e6f5", skyBot:"#d4d0ee", silFar:"#9e96cd", silFarA:.28, silNear:"#8078b9", silNearA:.32, accent:"#7a6fd0", phase:6.8, seed:77}
-];
-function chapterOf(lv){ return mode==="daily" ? CHAPTERS.length-1 : Math.min(CHAPTERS.length-1, Math.floor(((lv||1)-1)/10)); }
-// 本章"织造进度"：章内第 1 关 0.1 → 第 10 关 1.0；每日织补视为已复原(1.0)。进度驱动背景灰→彩插值。
-function chProg(){
-  if(mode==="daily") return 1;
-  const inCh = Math.max(1, Math.min(10, level - chapterOf(level)*10));
-  return 0.1 + (inCh-1)*0.1;
-}
-function hex2rgb(h){ const n=parseInt(h.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
-function rgbStr(r,g,b){ return "rgb("+Math.round(r)+","+Math.round(g)+","+Math.round(b)+")"; }
-// 两色线性插值
-function mix(h1, h2, t){
-  const a=hex2rgb(h1), b=hex2rgb(h2);
-  return rgbStr(a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t);
-}
-// 去饱和（灰度版）：0.3R+0.59G+0.11B 感知亮度
-function grayOf(h){
-  const c=hex2rgb(h), l=c[0]*0.3+c[1]*0.59+c[2]*0.11;
-  return rgbStr(l,l,l);
-}
-function rgbaOf(rgbStr2, a){
-  const m=rgbStr2.match(/\d+/g);
-  return "rgba("+m[0]+","+m[1]+","+m[2]+","+a+")";
-}
-// 晾线绳上某点 x 的绳高：绳线为 (0,H*0.13)→(W/2,H*0.17)→(W,H*0.11) 的二次贝塞尔（微垂）。
-// 控制点 x=W/2 恰好落在 0→W 的中点，故 x(t)=t·W，可由 x 反解参数 t。
-function ropeYat(x){
-  const t = Math.max(0, Math.min(1, x / Math.max(1, W)));
-  const y0 = H*0.13, cy = H*0.17, y1 = H*0.11;
-  return (1-t)*(1-t)*y0 + 2*(1-t)*t*cy + t*t*y1;
-}
-function drawBackground(){
-  const ch = CHAPTERS[chapterOf(level)];
-  const p = chProg();                       // 灰雾未散程度 = 1-恢复度：低进度时世界接近灰白剪影
-  const g = ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0, mix(grayOf(ch.skyTop), ch.skyTop, p));
-  g.addColorStop(1, mix(grayOf(ch.skyBot), ch.skyBot, p));
-  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-  // 远景：2~3 个低透明度大线团剪影（替代旧版通用山丘正弦波）
-  ctx.fillStyle = rgbaOf(mix(grayOf(ch.silFar), ch.silFar, p), ch.silFarA);
-  for(let i=0;i<3;i++){
-    const fr = Math.min(W,H)*(0.10 + (i%2)*0.035);
-    const fx = W*(0.16 + i*0.30);
-    const fy = H*0.60 + (i%2)*H*0.07;
-    ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI*2); ctx.fill();
-  }
-  // 顶部晾线绳：微垂绳线（棕灰调，随恢复度上色）+ 确定性挂点上的 5 个小线团剪影
-  const ropeCol = mix(grayOf("#9e6c42"), "#9e6c42", p);
-  ctx.strokeStyle = ropeCol; ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(0, H*0.13);
-  ctx.quadraticCurveTo(W/2, H*0.17, W, H*0.11);
-  ctx.stroke();
-  for(let i=0;i<5;i++){
-    const bx = i*(W/6) + W*0.05;             // 确定性挂点（禁 Math.random）
-    const br = 5 + (i%3)*2;                  // 半径 5~9px
-    const by = ropeYat(bx) + br;             // 挂在绳下方
-    const bcol = mix(grayOf(i%2 ? ch.accent : ch.silNear), i%2 ? ch.accent : ch.silNear, p);
-    ctx.fillStyle = rgbaOf(bcol, 0.85 + (i%3)*0.05);
-    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = rgbaOf(bcol, 0.5); ctx.lineWidth = 1;   // 短弧绕线纹理×2（与线团语言一致）
-    ctx.beginPath(); ctx.arc(bx, by, br*0.62, 0.6, 2.6); ctx.stroke();
-    ctx.beginPath(); ctx.arc(bx, by, br*0.42, 3.1, 5.1); ctx.stroke();
-  }
-  // 近景右下：毛线篮剪影（半椭圆篮体 + 探出篮口的 2 个圆头线团）
-  const nearCol = rgbaOf(mix(grayOf(ch.silNear), ch.silNear, p), Math.min(0.9, ch.silNearA+0.10));
-  const bw = Math.min(W*0.30, 120), bh = bw*0.42;
-  const bx0 = W - bw - 10, by0 = H - bh - 8;
-  ctx.fillStyle = nearCol;
-  ctx.beginPath();
-  ctx.moveTo(bx0, by0);
-  ctx.bezierCurveTo(bx0, by0+bh*1.35, bx0+bw, by0+bh*1.35, bx0+bw, by0);   // 半椭圆篮体
-  ctx.closePath(); ctx.fill();
-  ctx.beginPath();                            // 篮口沿
-  ctx.moveTo(bx0-2, by0); ctx.lineTo(bx0+bw+2, by0);
-  ctx.strokeStyle = nearCol; ctx.lineWidth = 2.5; ctx.stroke();
-  const headCol = rgbaOf(mix(grayOf(ch.accent), ch.accent, p), 0.9);
-  ctx.fillStyle = headCol;
-  ctx.beginPath(); ctx.arc(bx0+bw*0.32, by0-bw*0.09, bw*0.10, 0, Math.PI*2); ctx.fill();  // 探出的线团×2
-  ctx.beginPath(); ctx.arc(bx0+bw*0.62, by0-bw*0.12, bw*0.12, 0, Math.PI*2); ctx.fill();
-  ctx.strokeStyle = rgbaOf(mix(grayOf(ch.accent), ch.accent, p), 0.5);
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(bx0+bw*0.32, by0-bw*0.09, bw*0.06, 0.5, 2.5); ctx.stroke();
-  // 近景左下：一小团散落的乱线（确定性 bezier 乱线×3，不压底部提示行的可读区）
-  const messCol = rgbaOf(mix(grayOf(ch.silNear), ch.silNear, p), Math.min(0.9, ch.silNearA+0.15));
-  ctx.strokeStyle = messCol; ctx.lineWidth = 1.8;
-  const lx = 8, ly = H - 30;
-  ctx.beginPath(); ctx.moveTo(lx, ly);
-  ctx.bezierCurveTo(lx+16, ly-14, lx+34, ly+6, lx+52, ly-8);
-  ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(lx+8, ly+5);
-  ctx.bezierCurveTo(lx+26, ly-10, lx+42, ly+9, lx+58, ly-3);
-  ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(lx+2, ly-4);
-  ctx.bezierCurveTo(lx+20, ly+8, lx+40, ly-12, lx+48, ly+3);
-  ctx.stroke();
-  // 织造进度条（画布顶部 y<18 内，不压管区 marginTop=18）：底槽 + accent 灰彩填充 + 章名小字
-  const pb = progBarGeom();
-  ctx.fillStyle = "rgba(0,0,0,.08)";
-  ctx.fillRect(pb.x, pb.y, pb.w, pb.h);
-  if(pb.fw > 0){
-    ctx.fillStyle = mix(grayOf(ch.accent), ch.accent, p);
-    ctx.fillRect(pb.x, pb.y, pb.fw, pb.h);
-  }
-  ctx.font = "10px sans-serif";
-  ctx.fillStyle = "rgba(31,39,51,.38)";
-  ctx.textAlign = "left";
-  ctx.fillText(ch.name, pb.x, pb.y + pb.h + 5.5);
-}
-// 织造进度条几何（断言出口）：底槽宽 W-32 居中、y=5 起 3px 高；填充宽 = 底槽宽×chProg()
-function progBarGeom(){
-  const bw = Math.max(0, W-32);
-  return { x:(W-bw)/2, y:5, h:3, w:bw, fw: bw*chProg() };
-}
+let BASKET = {x:0,y:0,w:1,h:1};
+window.addEventListener("resize", layout);
 
-/* ---------- 织图终点（毛线主题期2提前，纯表现）：程序化花纹 + 胜利弹窗逐格点亮 ---------- */
-// 每章挂毯配色（PALETTE 索引+1，贴近本章 accent 色相）：[主色, 副色, 点缀色]
-const TAPESTRY_COLORS = [[6,3,8],[2,9,4],[1,5,7],[6,3,0],[4,7,1]];
-// 程序化花纹生成器：返回 8×8 网格，0=底色格，1..PALETTE.length=PALETTE 色索引+1。
-// ch=0 用左右对称菱形纹（|r-3.5|+|c-3.5| 距离分 3 色环带），ch1~4 分别为竖条纹/波点/锯齿/散点。
-// 全部确定性生成（散点用 CHAPTERS[ch].seed 派生），禁 Math.random。
-function genTapestry(ch){
-  const ci = Math.max(0, Math.min(TAPESTRY_COLORS.length-1, ch|0));
-  const cs = TAPESTRY_COLORS[ci];
-  const c1 = cs[0]+1, c2 = cs[1]+1, c3 = cs[2]+1;
-  const g = [];
-  for(let r=0;r<8;r++){
-    const row = [];
-    for(let c=0;c<8;c++){
-      let v = 0;
-      if(ch===0){
-        const d = Math.abs(r-3.5) + Math.abs(c-3.5);      // 菱形距离 → 3 色环带
-        if(d<=1) v = c3; else if(d<=2) v = c2; else if(d<=4) v = c1;
-      } else if(ch===1){
-        v = (Math.floor(c/2)%2===0) ? c1 : c2;            // 竖条纹
-      } else if(ch===2){
-        if(r%4===1 && c%4===1) v = c1;                    // 波点（错位双点阵）
-        else if(r%4===3 && c%4===3) v = c2;
-      } else if(ch===3){
-        v = ((c + (r%2)*2) % 4 < 2) ? c1 : 0;             // 锯齿（逐行错位条纹）
-      } else {
-        const h = (r*7 + c*13 + (CHAPTERS[ci].seed||11)) % 11;
-        if(h < 3) v = 1 + ((r*3 + c*5) % PALETTE.length); // 散点
-      }
-      row.push(v);
-    }
-    g.push(row);
+function tileRect(t){
+  const s = t.r*2*BASKET.w;
+  return {x:BASKET.x + t.x*BASKET.w - s/2, y:BASKET.y + t.y*BASKET.h - s/2 - t.z*2.5, s};
+}
+function slotRect(i){ const s=slotW/SLOT_MAX; return {x:(W-slotW)/2 + i*s, y:slotY, s}; }
+
+/* ---------- 绘制线团 ---------- */
+function drawYarn(x,y,s,col,dim,alpha){
+  const C = COLORS[col], r = s*.42, cx=x+s/2, cy=y+s/2;
+  ctx.save(); ctx.globalAlpha = alpha==null?1:alpha;
+  // 底座方块（像抓大鹅的"格子物件"）
+  ctx.fillStyle = dim ? "#cdbba4" : "#fff6e8";
+  roundRect(x+s*.04,y+s*.04,s*.92,s*.92,s*.2); ctx.fill();
+  ctx.strokeStyle = dim ? "#b09a80" : "#e0c7a6"; ctx.lineWidth=2; ctx.stroke();
+  // 线团
+  const g = ctx.createRadialGradient(cx-r*.35,cy-r*.35,r*.1,cx,cy,r);
+  g.addColorStop(0, lighten(C.c,.35)); g.addColorStop(1, C.d);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = Math.max(1,s*.035);
+  for(let k=-2;k<=2;k++){ ctx.beginPath(); ctx.ellipse(cx,cy,r*.95,r*(.3+Math.abs(k)*.12),k*.5,0,Math.PI); ctx.stroke(); }
+  if(dim){ ctx.fillStyle="rgba(70,50,35,.45)"; roundRect(x+s*.04,y+s*.04,s*.92,s*.92,s*.2); ctx.fill(); }
+  ctx.restore();
+}
+// 具体物件：彩色底托 + emoji 物件（按"形状"认，色弱也能玩），带旋转
+function drawItem(x,y,s,col,dim,rot){
+  const C = COLORS[col], cx=x+s/2, cy=y+s/2, r=s*.5;
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot||0);
+  ctx.fillStyle="rgba(60,35,15,.28)"; ctx.beginPath(); ctx.ellipse(r*.08,r*.16,r*.98,r*.9,0,0,7); ctx.fill();
+  const g = ctx.createRadialGradient(-r*.35,-r*.4,r*.1,0,0,r);
+  g.addColorStop(0, lighten(C.c,.55)); g.addColorStop(1, C.c);
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,r*.96,0,7); ctx.fill();
+  ctx.strokeStyle=C.d; ctx.lineWidth=Math.max(1.5,s*.05); ctx.stroke();
+  ctx.font = `${Math.round(s*.62)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(ITEMS[col], 0, s*.04);
+  if(dim){ ctx.fillStyle="rgba(55,35,20,.55)"; ctx.beginPath(); ctx.arc(0,0,r*.98,0,7); ctx.fill(); }
+  ctx.restore();
+}
+// 场景：木桌 + 竹筐 + 黑猫
+function drawScene(now){
+  const B=BASKET;
+  // 木桌
+  const tg=ctx.createLinearGradient(0,B.y+B.h*.3,0,H); tg.addColorStop(0,"#c99766"); tg.addColorStop(1,"#a8743f");
+  ctx.fillStyle=tg; ctx.fillRect(0,B.y+B.h*.35,W,H);
+  ctx.strokeStyle="rgba(90,50,20,.18)"; ctx.lineWidth=2;
+  for(let i=0;i<6;i++){ const y=B.y+B.h*.4+i*28; ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(W*.3,y+6,W*.7,y-6,W,y); ctx.stroke(); }
+  // 竹筐（椭圆底 + 编织纹 + 前沿）
+  const cx=B.x+B.w/2, cy=B.y+B.h*.55, rx=B.w*.52, ry=B.h*.5;
+  ctx.fillStyle="#8a5a2c"; ctx.beginPath(); ctx.ellipse(cx,cy+8,rx+6,ry+8,0,0,7); ctx.fill();
+  ctx.fillStyle="#d9a866"; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.clip();
+  ctx.strokeStyle="rgba(120,75,30,.35)"; ctx.lineWidth=3;
+  for(let i=-12;i<=12;i++){ ctx.beginPath(); ctx.moveTo(cx+i*18,cy-ry); ctx.lineTo(cx+i*18+30,cy+ry); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx+i*18,cy-ry); ctx.lineTo(cx+i*18-30,cy+ry); ctx.stroke(); }
+  ctx.restore();
+  ctx.strokeStyle="#7a4c22"; ctx.lineWidth=7; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.stroke();
+}
+function drawCat(now){
+  const x=W-62, y=8+Math.sin(now/400)*2, s=1;
+  ctx.save(); ctx.translate(x,y);
+  if(catMood==="lose"||catMood==="danger"){ ctx.translate(0,Math.sin(now/60)*2); }
+  ctx.fillStyle="#2b2320";
+  ctx.beginPath(); ctx.ellipse(30,40,22,18,0,0,7); ctx.fill();               // 身体
+  ctx.beginPath(); ctx.arc(30,22,15,0,7); ctx.fill();                          // 头
+  ctx.beginPath(); ctx.moveTo(17,14); ctx.lineTo(19,0); ctx.lineTo(27,10); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(43,14); ctx.lineTo(41,0); ctx.lineTo(33,10); ctx.fill();
+  ctx.strokeStyle="#2b2320"; ctx.lineWidth=5; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(50,46); ctx.quadraticCurveTo(66,40+Math.sin(now/200)*8,60,22); ctx.stroke();
+  // 眼睛：得意眯眼 / 惊讶圆眼
+  ctx.fillStyle="#f6d34a";
+  if(catMood==="win"||catMood==="combo"){ ctx.beginPath(); ctx.arc(24,21,4.5,0,7); ctx.arc(36,21,4.5,0,7); ctx.fill(); ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(24,21,2,0,7); ctx.arc(36,21,2,0,7); ctx.fill(); }
+  else { ctx.strokeStyle="#f6d34a"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(24,23,4,Math.PI*1.1,Math.PI*1.9); ctx.stroke(); ctx.beginPath(); ctx.arc(36,23,4,Math.PI*1.1,Math.PI*1.9); ctx.stroke(); }
+  ctx.restore();
+  // 对白气泡
+  if(catSay && now < catSayUntil){
+    ctx.font="bold 14px sans-serif"; const tw=ctx.measureText(catSay).width+20;
+    const bx=Math.max(8,x-tw-4), by=14;
+    ctx.fillStyle="#fff"; roundRect(bx,by,tw,30,14); ctx.fill(); ctx.strokeStyle="#2b2320"; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx+tw-2,by+12); ctx.lineTo(bx+tw+10,by+18); ctx.lineTo(bx+tw-2,by+22); ctx.fillStyle="#fff"; ctx.fill();
+    ctx.fillStyle="#2b2320"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(catSay,bx+10,by+15);
   }
-  return g;
+  // 关卡标题（左上）
+  ctx.fillStyle="#6b4428"; ctx.font="bold 15px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.fillText("📜 "+TALES[(level-1)%TALES.length].t, 10, 16);
 }
-// 本章已织格数（纯推导，不新增存档字段）：章内已完成关数（+1 表示本次刚完成的这一关）
-function tapestryLit(){
-  return Math.max(0, Math.min(64, (level-1) - chapterOf(level)*10 + 1));
-}
-// 胜利弹窗织图绘制：底格灰版 → 此前已织格立即点亮（从中心向外按距离序）→ 本次新增格 0.6s 逐格点亮
-function drawTapestry(cvs){
-  try{
-    const g = cvs.getContext && cvs.getContext("2d");
-    if(!g) return;
-    const cell = cvs.width/8;
-    if(!(cell>0)) return;
-    g.clearRect(0,0,cvs.width,cvs.height);
-    const grid = genTapestry(chapterOf(level));
-    const colOf = v => v>0 ? PALETTE[(v-1)%PALETTE.length] : "rgba(0,0,0,.07)";
-    const cells = [];
-    for(let r=0;r<8;r++) for(let c=0;c<8;c++) cells.push({r,c,d:Math.abs(r-3.5)+Math.abs(c-3.5)});
-    cells.sort((a,b)=>a.d-b.d);          // 从中心向外点亮
-    const lit = tapestryLit();
-    const oldN = Math.max(0, lit-1);     // 此前已织格：立即点亮
-    for(let k=0;k<oldN;k++){
-      const q = cells[k];
-      g.fillStyle = colOf(grid[q.r][q.c]);
-      g.fillRect(q.c*cell, q.r*cell, cell-1, cell-1);
-    }
-    const step = 600 / Math.max(1, lit-oldN);
-    for(let k=oldN;k<lit;k++){
-      const q = cells[k];
-      const col = colOf(grid[q.r][q.c]);
-      setTimeout(()=>{                    // 本次新增格：0.6s 逐格点亮动画
-        try{
-          g.fillStyle = col;
-          g.fillRect(q.c*cell, q.r*cell, cell-1, cell-1);
-        }catch(e){}
-      }, Math.round((k-oldN)*step));
-    }
-  }catch(e){}
-}
-function render(){
+let catMood="start", catSay="", catSayUntil=0;
+function cat(mood){ catMood=mood; const L=CAT_LINES[mood]; catSay=L[Math.floor(Math.random()*L.length)]; catSayUntil=performance.now()+2200; }
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function lighten(hex,a){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&255,b=n&255; r=r+(255-r)*a|0; g=g+(255-g)*a|0; b=b+(255-b)*a|0; return `rgb(${r},${g},${b})`; }
+
+/* ---------- 主循环绘制 ---------- */
+function draw(now){
   ctx.clearRect(0,0,W,H);
-  drawBackground();
-  for(let i=0;i<tubes.length;i++) drawTube(i);
-  drawFlyingBalls();
-  // 常驻过关提示（叠在场景背景上，垫一层半透明底保证可读）
-  const tip = "点选管子搬运同色 · 每管只剩一种颜色即过关";
-  ctx.font="12px sans-serif";
-  const tipW = ctx.measureText(tip).width;
-  ctx.fillStyle="rgba(255,255,255,.55)";
-  ctx.fillRect(W/2-tipW/2-8, H-22, tipW+16, 16);
-  ctx.fillStyle="#9aa4b2"; ctx.textAlign="center";
-  ctx.fillText(tip, W/2, H-8);
-  ctx.textAlign="left";
-  document.getElementById("hudLevel").textContent = mode==="daily" ? "每日" : level;
-  // 限步关：复用「步数」槽位常显剩余步数(不新增常驻 stat，避免 340px 窄屏挤爆)；剩余 ≤5 高亮告警
-  const kMoves = document.getElementById("hudMovesK");
-  const vMoves = document.getElementById("hudMoves");
-  if(moveLimit>0){
-    const left = Math.max(0, moveLimit - moves);
-    if(kMoves) kMoves.textContent = "剩余";
-    vMoves.textContent = String(left);
-    vMoves.className = left<=5 ? "v warn" : "v";
-  } else {
-    if(kMoves) kMoves.textContent = "步数";
-    vMoves.textContent = String(moves);
-    vMoves.className = "v";
+  drawScene(now);
+  let sx=0, sy=0;
+  if(shakeT>0){ sx=(Math.random()-.5)*10*shakeT; sy=(Math.random()-.5)*6*shakeT; shakeT=Math.max(0,shakeT-.04); }
+  ctx.save(); ctx.translate(sx,sy);
+  // 堆叠
+  const alive = tiles.filter(t=>t.alive).sort((a,b)=>a.z-b.z || a.y-b.y);
+  for(const t of alive){
+    const r = tileRect(t), cov = isCovered(t,tiles);
+    drawItem(r.x,r.y,r.s,t.color, cov && peekT<=0, t.rot);
   }
-  document.getElementById("hudCoins").textContent = coins;
-  // 加管记录常驻 HUD：让"这是辅助操作、本关还剩几次"一直可见，而不是只在死局弹窗里出现一次
-  document.getElementById("hudAdd").textContent = addedTubes + "/" + MAX_ADD_TUBES;
-  document.getElementById("hudStars").textContent = mode==="daily"
-    ? (dailyDoneDate===dateStr() ? "★" : "☆")
-    : (bestStars[level] ? "★".repeat(bestStars[level]) : "☆");
-  // 两个同步出口放在 render 内，保证任何状态变化(切关/加步/加步上限/模式切换)都能反映到 UI
-  syncAdBtn();
-  syncHudStat();
+  ctx.restore();
+  drawCat(now);
+  // 线篮
+  const danger = slot.length >= slotCap-2;
+  const s0 = slotRect(0);
+  ctx.fillStyle = danger ? (Math.sin(now/120)>0 ? "#f6c2b4" : "#f0a996") : "#e9d3b4";
+  roundRect(s0.x-8, slotY-8, slotW+16, s0.s+16, 16); ctx.fill();
+  ctx.strokeStyle = danger ? "#d9534f" : "#c9a982"; ctx.lineWidth=3; ctx.stroke();
+  for(let i=0;i<SLOT_MAX;i++){ const r=slotRect(i);
+    if(i<slotCap){ ctx.fillStyle = (i===slotCap-1 && slotFlash>now) ? "#ffe08a" : "#fbf1e2"; roundRect(r.x+3,r.y+3,r.s-6,r.s-6,10); ctx.fill(); }
+    else { ctx.fillStyle="rgba(120,90,60,.18)"; roundRect(r.x+3,r.y+3,r.s-6,r.s-6,10); ctx.fill();
+      ctx.font=(r.s*.36)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=.55; ctx.fillText("🔒",r.x+r.s/2,r.y+r.s/2); ctx.globalAlpha=1; } }
+  slot.forEach((it,i)=>{ const r=slotRect(i); it.dx += (r.x-it.dx)*.35; drawItem(it.dx+3,r.y+3,r.s-6,it.color,false,0); });
+  // 飞行中
+  for(let i=flying.length-1;i>=0;i--){
+    const f=flying[i]; f.t=Math.min(1,f.t+.12);
+    const e = 1-Math.pow(1-f.t,3), x=f.x0+(f.x1-f.x0)*e, y=f.y0+(f.y1-f.y0)*e - Math.sin(e*Math.PI)*40;
+    const s=f.s0+(f.s1-f.s0)*e; drawItem(x,y,s,f.color,false,f.rot*(1-e));
+    if(f.t>=1){ flying.splice(i,1); f.done(); }
+  }
+  // 特效粒子
+  for(let i=fx.length-1;i>=0;i--){ const p=fx[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=.25; p.life-=.03;
+    ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); ctx.globalAlpha=1; if(p.life<=0) fx.splice(i,1); }
+  if(peekT>0) peekT--;
+  requestAnimationFrame(draw);
 }
 
 /* ---------- 交互 ---------- */
-function hitTube(px,py){
-  for(let i=0;i<tubeRects.length;i++){
-    const r=tubeRects[i];
-    if(px>=r.x-4 && px<=r.x+r.w+4 && py>=r.y-4 && py<=r.y+r.h+4) return i;
+let busy=false;
+cv.addEventListener("pointerdown", e=>{
+  if(state!=="play" || busy) return;
+  const b=cv.getBoundingClientRect(), x=e.clientX-b.left, y=e.clientY-b.top;
+  const cand = tiles.filter(t=>t.alive).sort((a,b)=>b.z-a.z);
+  for(const t of cand){
+    const r=tileRect(t);
+    const dx=x-(r.x+r.s/2), dy=y-(r.y+r.s/2);
+    if(dx*dx+dy*dy <= (r.s*.5)*(r.s*.5)){
+      if(isCovered(t,tiles)){ toast("被压住了，先拿上面的"); cat("start"); beep(180,.08,"square",.05); return; }
+      pick(t,r); return;
+    }
   }
-  return -1;
+});
+function pick(t,r){
+  if(slot.length + flying.length >= slotCap) return;
+  t.alive=false; SFX.pick(); vibrate(8); tickOrders();
+  // 同色插到同色后面（抓大鹅式归堆）
+  let idx = slot.length; for(let i=slot.length-1;i>=0;i--) if(slot[i].color===t.color){ idx=i+1; break; }
+  const target = slotRect(idx);
+  busy=true;
+  flying.push({x0:r.x,y0:r.y,s0:r.s,x1:target.x+3,y1:target.y+3,s1:target.s-6,color:t.color,rot:t.rot,t:0,done(){
+    slot.splice(idx,0,{color:t.color, dx:target.x});
+    busy=false; resolve();
+  }});
+  updateHUD();
 }
-function toast(msg, ms){
-  const el=document.getElementById("toast");
-  el.textContent=msg; el.classList.add("show");
-  clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"), ms || 1200);
+function resolve(){
+  // 三消
+  const cnt={}; slot.forEach(s=>cnt[s.color]=(cnt[s.color]||0)+1);
+  for(const c in cnt){ if(cnt[c]>=3){
+    let removed=0; const rs=[];
+    slot = slot.filter((s,i)=>{ if(s.color==c && removed<3){ removed++; rs.push(slotRect(i)); return false; } return true; });
+    rs.forEach(r=>burst(r.x+r.s/2,r.y+r.s/2,COLORS[c].c));
+    deliver(c);
+    combo++; SFX.match(combo); vibrate(20); if(combo>=2) cat("combo");
+    if(combo>=2) toast(["","","连消 ×2！","手感火热 ×3！","停不下来 ×4！","织神附体 ×"+combo+"！"][Math.min(combo,5)]);
+  }}
+  if(!tiles.some(t=>t.alive) && !slot.length){ return setTimeout(win,350); }
+  if(slot.length>=slotCap){ return setTimeout(lose,250); }
+  if(slot.length>=slotCap-2){ SFX.warn(); vibrate(30); cat("danger"); }
+  if(!Object.values(cnt).some(v=>v>=3)) combo=0;
+  updateHUD();
 }
-function pushHistory(){ history.push(clone(tubes)); if(history.length>50) history.shift(); }
+let combo=0, slotCap=SLOT_N, slotFlash=0;
+function burst(x,y,c){ for(let i=0;i<14;i++){ const a=Math.random()*7, v=2+Math.random()*4; fx.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-3,r:2+Math.random()*3,c,life:1}); } }
 
-// 动画播放中再次输入 = 跳过动画（立即落定）。逻辑态在 pour() 时就已更新，
-// 动画只负责表现，所以跳过是安全的，不会丢步/回滚。
-function skipAnim(){
-  if(!anim) return false;
-  anim = null; animating = false;
-  render(); afterMove();
-  return true;
+/* ---------- 道具 ---------- */
+function useTool(k, fn){
+  if(state!=="play" || busy) return;
+  if(tools[k]>0){ tools[k]--; fn(); }
+  else adPrompt("看个短视频，再拿 1 次「"+({shake:"抖篮",back:"退回",peek:"透视"}[k])+"」？", ()=>{ fn(); });
+  updateHUD();
 }
-// 跳过瞬间可能弹出胜利/死局/广告/生成层，此时本次点按不再透传，避免误触
-function anyModalOpen(){
-  const ids = ["winOverlay","deadOverlay","adOverlay","genOverlay","shopOverlay","exhaustedOverlay"];
-  for(let i=0;i<ids.length;i++){
-    const el = document.getElementById(ids[i]);
-    if(el && el.style.display === "flex") return true;
+document.getElementById("tShake").onclick = ()=>useTool("shake", ()=>{
+  const live = tiles.filter(t=>t.alive), cols = shuffle(live.map(t=>t.color)); live.forEach((t,i)=>t.color=cols[i]);
+  shakeT=1; SFX.shake(); vibrate([30,40,30]); toast("哗啦——整筐抖了一遍！");
+});
+document.getElementById("tBack").onclick = ()=>useTool("back", ()=>{
+  if(!slot.length){ tools.back++; return toast("篮子是空的"); }
+  const take = slot.splice(0,Math.min(3,slot.length)); pushBack(tiles, take.map(s=>s.color));
+  toast("退回 "+take.length+" 个线团到顶上"); beep(500,.12,"sine",.12,300);
+});
+document.getElementById("tPeek").onclick = ()=>useTool("peek", ()=>{ peekT=180; toast("透视 3 秒！"); beep(880,.2,"sine",.1,1200); });
+document.getElementById("tShop").onclick = ()=>openShop();
+
+function updateHUD(){
+  document.getElementById("lvTxt").textContent = "第 "+level+" 关" + (level===2?" · 难":"") + (level===10?" · Boss":"");
+  document.getElementById("leftTxt").textContent = "剩 "+tiles.filter(t=>t.alive).length;
+  document.getElementById("starTxt").textContent = save.stars;
+  const ce=document.getElementById("coinTxt"); if(ce) ce.textContent = save.coins;
+  [["tShake","shake"],["tBack","back"],["tPeek","peek"]].forEach(([id,k])=>{ const el=document.getElementById(id); el.classList.toggle("ad",tools[k]<=0); el.querySelector("i").textContent = tools[k]>0?tools[k]:"▶"; });
+}
+let toastT=0;
+function toast(s){ const el=document.getElementById("toast"); el.textContent=s; el.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("on"),1300); }
+
+/* ---------- 订单（浪漫餐厅式）：顾客排队点单 + 耐心值，三消收好的物件自动交付 ----------
+   设计要点：筐总要清空，所以订单必须带"时效"才有决策 —— 每拿 1 件，所有客人耐心 -1；
+   耐心耗尽客人生气离开（拿不到金币），换下一位。玩家要在"保命清篮"和"先做订单"间取舍。 */
+const GUESTS = [
+  {ico:"👵",n:"奶奶"},{ico:"👧",n:"小花"},{ico:"🧔",n:"木匠"},{ico:"👩‍🍳",n:"厨娘"},
+  {ico:"🧙",n:"斗篷客"},{ico:"👮",n:"巡警"},{ico:"👴",n:"老邮差"}
+];
+let orders = [], orderDone = 0, orderLost = 0, coinsGot = 0, guestIdx = 0;
+
+function remainCount(){ const h={}; tiles.forEach(t=>{ if(t.alive) h[t.color]=(h[t.color]||0)+1; }); slot.forEach(s=>h[s.color]=(h[s.color]||0)+1); return h; }
+function newOrder(){
+  const have = remainCount(), busyC = new Set(orders.filter(o=>!o.done&&!o.gone).flatMap(o=>o.need.map(x=>x.c)));
+  const cols = Object.keys(have).map(Number).filter(c=>have[c]>=3 && !busyC.has(c)).sort(()=>Math.random()-.5);
+  if(!cols.length) return null;
+  const kinds = level<=2 ? 1 : (Math.random()<.45 && cols.length>1 ? 2 : 1);
+  const need = cols.slice(0,kinds).map(c=>({c, want: Math.min(Math.floor(have[c]/3), Math.random()<.3?2:1), got:0}));
+  const sets = need.reduce((s,x)=>s+x.want,0);
+  const g = GUESTS[guestIdx++ % GUESTS.length];
+  const pat = Math.round(sets*11 + 8 - Math.min(4, level*.4));  // 耐心 = 拿取次数（sim3 调参：11/8）
+  return {g, need, done:false, gone:false, pat, max:pat, reward: 8 + sets*10};
+}
+function makeOrders(){
+  orders=[]; orderDone=0; orderLost=0; coinsGot=0; guestIdx=level*2;
+  const n = level===1 ? 1 : 2;
+  for(let i=0;i<n;i++){ const o=newOrder(); if(o) orders.push(o); }
+}
+function refillOrders(){
+  orders = orders.filter(o=>!o.done && !o.gone);
+  const n = level===1 ? 1 : 2;
+  while(orders.length < n){ const o=newOrder(); if(!o) break; orders.push(o); }
+  renderOrders();
+}
+// 每拿一件：耐心 -1
+function tickOrders(){
+  let changed=false;
+  for(const o of orders){ if(o.done||o.gone) continue; o.pat--; if(o.pat<=0){ o.gone=true; orderLost++; changed=true; toast(o.g.ico+" "+o.g.n+"等不及走了…"); beep(220,.25,"triangle",.1,150); } }
+  renderOrders(); if(changed) setTimeout(refillOrders,700);
+}
+// 三消时：交给需要它的客人
+function deliver(c){
+  for(const o of orders){
+    if(o.done||o.gone) continue;
+    const n = o.need.find(x=>x.c==c && x.got<x.want); if(!n) continue;
+    n.got++; beep(1046,.12,"triangle",.14);
+    if(o.need.every(x=>x.got>=x.want)){
+      o.done=true; orderDone++; coinsGot+=o.reward;
+      [784,988,1318].forEach((f,k)=>setTimeout(()=>beep(f,.16,"triangle",.16),k*80));
+      vibrate([15,30,15]);
+      // 局内回报：每完成一单，线篮 +1 格（上限 SLOT_MAX）—— 让"做订单"从陷阱变成保命投资
+      if(slotCap < SLOT_MAX){ slotCap++; slotFlash = performance.now()+1200; toast(o.g.ico+" "+o.g.n+"送你一格篮子！🧺+1 · 🪙+"+o.reward); }
+      else toast(o.g.ico+" "+o.g.n+"：太谢谢啦！ 🪙+"+o.reward);
+      setTimeout(refillOrders,700);
+    }
+    renderOrders(o); return true;
   }
   return false;
 }
-function onTap(px,py){
-  if(animating){
-    skipAnim();                  // 动画中快速点按：先跳过动画
-    if(anyModalOpen()) return;   // 刚弹了胜负/死局层，本次点按到此为止
-  }
-  clearHint();                   // 玩家一旦自己操作，提示高亮立即退场
-  const i = hitTube(px,py);
-  if(i<0) return;
-  const t = tubes[i];
-  if(selected<0){
-    if(t.length===0){ toast("空管"); return; }
-    selected=i; beep(520,0.05,"sine",0.05); startPulse(); render(); return;
-  }
-  if(selected===i){ selected=-1; render(); return; }
-  // 尝试倒
-  if(canPour(tubes,selected,i)){
-    // 力竭拦截：步数用尽且未通关 → 落子前拦截、弹窗给出口；不判负、不污染撤销栈
-    if(moveLimit>0 && moves>=moveLimit && !isWin(tubes)){ showExhausted(); return; }
-    pushHistory();
-    const from = selected;
-    const mv = moveCount(tubes, from, i);
-    // 归轴成轴（毛线主题，纯表现反馈）：本次落定使目标管从「非归轴」变为「归轴」时，
-    // 播放轻快双音 + 轻震动。判定只读状态，不改数值、不入撤销栈、不影响星级。
-    const wasSpooled = tubes[i].length===CAP && tubes[i].every(c=>c===tubes[i][0]);
-    pour(tubes, from, i);   // 逻辑态立即更新，动画只负责表现
-    const nowSpooled = tubes[i].length===CAP && tubes[i].every(c=>c===tubes[i][0]);
-    if(!wasSpooled && nowSpooled){
-      beep(784,0.06,"triangle",0.05);
-      setTimeout(()=>beep(988,0.08,"triangle",0.05),90);
-      haptic(15);
-    }
-    if(isWin(tubes)){ haptic([22,40,22]); winVibrated = true; } // 过关震动下沉到用户手势内(严格浏览器 rAF 回调未必触发)
-    moves++;
-    beep(660,0.07,"triangle",0.06); shh();   // 倒线团：短音+沙沙摩擦声（毛线主题期1）
-    selected=-1;
-    startPourAnim(from, i, mv.color, mv.cnt);
-    return;
-  } else {
-    // 不能倒：改选
-    if(t.length>0){ selected=i; beep(520,0.05); }
-    else { selected=-1; }
-    render();
-  }
-}
-cv.addEventListener("pointerdown", e=>{
-  const rect = cv.getBoundingClientRect();
-  onTap(e.clientX-rect.left, e.clientY-rect.top);
-});
-
-/* ---------- 倒球动画(平滑飞入，看清倒了几颗) ---------- */
-function startPourAnim(from, to, color, cnt){
-  anim = {from, to, color, cnt, t:0, dur: Math.max(280, 130*cnt), last:0};
-  animating = true;
-  requestAnimationFrame(animStep);
-}
-function animStep(ts){
-  if(!anim){ animating=false; return; }
-  if(!anim.last) anim.last = ts;
-  anim.t += ts - anim.last;
-  anim.last = ts;
-  render();
-  if(anim.t >= anim.dur){
-    anim = null; animating=false; render();
-    afterMove();   // 动画结束后统一判定胜负/步数
-  } else {
-    requestAnimationFrame(animStep);
-  }
-}
-// 倒球毛线拖尾（毛线主题，纯表现）：从源管口到飞行球当前位置的"拉出的毛线"，
-// quadraticCurveTo 控制点轻微下垂，globalAlpha 随飞行进度 0.7→0 渐隐，落定自然消失。
-function drawYarnTrail(sx, sy, ex, ey, lp, colorIdx){
-  ctx.save();
-  ctx.globalAlpha = Math.max(0, 0.7*(1-Math.max(0,Math.min(1,lp))));
-  ctx.strokeStyle = PALETTE[colorIdx % PALETTE.length];
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(sx, sy);
-  ctx.quadraticCurveTo((sx+ex)/2, Math.max(sy, ey) + 12, ex, ey);
-  ctx.stroke();
-  ctx.restore();
-}
-// 飞行中的球：沿二次贝塞尔从源管口弧线飞入目标管对应槽位
-function drawFlyingBalls(){
-  if(!anim) return;
-  const rFrom = tubeRects[anim.from];
-  const rTo = tubeRects[anim.to];
-  if(!rFrom || !rTo) return;
-  const mouth = {x: rFrom.x + rFrom.w/2, y: rFrom.y + 8};
-  const targetLen = tubes[anim.to].length;
-  const perBall = anim.dur*0.8;
-  const delaySpan = anim.dur*0.2;
-  for(let k=0;k<anim.cnt;k++){
-    const idx = targetLen - anim.cnt + k;
-    const slot = ballPos(rTo, idx);
-    let lp = (anim.t - (k/anim.cnt)*delaySpan) / perBall;
-    if(lp<=0) continue;
-    if(lp>1) lp=1;
-    const e = lp*lp*(3-2*lp); // smoothstep
-    const sx=mouth.x, sy=mouth.y, ex=slot.cx, ey=slot.cy;
-    const peak = Math.min(sy, ey) - 28;
-    const mx=(sx+ex)/2;
-    const x=(1-e)*(1-e)*sx + 2*(1-e)*e*mx + e*e*ex;
-    const y=(1-e)*(1-e)*sy + 2*(1-e)*e*peak + e*e*ey;
-    drawYarnTrail(sx, sy, x, y, lp, anim.color);   // 拉出的毛线拖尾（纯表现，不动 anim 结构）
-    drawBall(x, y, slot.ballR, anim.color);
-  }
-}
-function afterMove(){
-  if(isWin(tubes)){ win(); return; }
-  if(!hasAnyMove(tubes)){ showDeadlock(); return; } // 死局：无路可走
-}
-// 死局出口：撤销 / 看广告加管(加一根空管后必有新合法步)
-// 加管按钮态的唯一同步出口：切关/切每日谜题/加管后/开死局弹窗都要调，
-// 否则按钮的文案与禁用态会和真实次数脱节（例如切关后仍显示"已用完"）。
-function syncDeadAdBtn(){
-  const left = MAX_ADD_TUBES - addedTubes;
-  const btn = document.getElementById("btnDeadAd");
-  btn.textContent = left > 0 ? ("看广告加管（剩 " + left + " 次）") : "加管次数已用完";
-  btn.disabled = (left <= 0);   // 置灰样式由 CSS button.act[disabled] 统一处理
-  document.getElementById("deadAddInfo").textContent = left > 0
-    ? ("本关已加管 " + addedTubes + " 次，还剩 " + left + " 次。加管属辅助操作，本关最高只能拿 ★★。")
-    : ("本关加管已达上限（" + MAX_ADD_TUBES + " 次已用完），只能撤销回退或重开本关。");
-}
-function showDeadlock(){
-  syncDeadAdBtn();
-  document.getElementById("deadOverlay").style.display="flex";
-}
-function hideDeadlock(){ document.getElementById("deadOverlay").style.display="none"; }
-// 力竭弹窗（步数用尽、不判负）：看广告 +5 步 / 金币 40 换 5 步 / 重开本关。
-// 按钮态与文案的唯一同步出口：切关/切每日谜题/加步后/开弹窗都要调，否则文案与禁用态脱节。
-function syncExhaustedBtns(){
-  const adBtn = document.getElementById("btnExhaustedAd");
-  const coinBtn = document.getElementById("btnExhaustedCoin");
-  const left = AD_BOOST_MAX - adStepsUsed;
-  if(adBtn){
-    if(left <= 0){ adBtn.textContent = "本关加步已达上限"; adBtn.disabled = true; }
-    else { adBtn.textContent = "看广告 +5 步（剩 " + left + " 次）"; adBtn.disabled = false; }
-  }
-  if(coinBtn){
-    if(left <= 0){ coinBtn.textContent = "本关加步已达上限"; coinBtn.disabled = true; }
-    else if(coins < 40){ coinBtn.textContent = "金币 40 换 5 步（金币不足）"; coinBtn.disabled = true; }
-    else { coinBtn.textContent = "金币 40 换 5 步"; coinBtn.disabled = false; }
-  }
-  const undoBtn = document.getElementById("btnExhaustedUndo");
-  if(undoBtn){
-    if(history.length === 0){ undoBtn.textContent = "无可撤销"; undoBtn.disabled = true; }
-    else { undoBtn.textContent = "撤销一步"; undoBtn.disabled = false; }
-  }
-}
-function showExhausted(){
-  syncExhaustedBtns();
-  document.getElementById("exhaustedOverlay").style.display = "flex";
-}
-function hideExhausted(){ document.getElementById("exhaustedOverlay").style.display = "none"; }
-// 「加步」唯一出口：限步关 +5 步（每关最多 AD_BOOST_MAX 次，看广告与金币兑换共用计数与上限）；
-// 无广告用户直接发放同奖励（不播广告）；非限步关退化为领 +10 金币（维持原行为）。
-function grantAdBoost(){
-  if(moveLimit>0){
-    if(adStepsUsed >= AD_BOOST_MAX){ toast("本关加步次数已用完（"+AD_BOOST_MAX+" 次）"); return false; }
-    adStepsUsed++;
-    moveLimit += 5;
-    syncExhaustedBtns();
-    toast("+5 步已发放");
-    return true;
-  }
-  coins += 10; save();
-  toast("+10 金币(广告)");
-  return true;
-}
-// 返回是否真的加成功：达到上限时拒绝，避免"看完广告却什么也没拿到"
-function addTube(){
-  if(addedTubes >= MAX_ADD_TUBES) return false;
-  addedTubes++;
-  tubes.push([]);
-  clearHint(true);   // 加管后索引变化，旧提示可能指向已错位的管子
-  syncDeadAdBtn();
-  layout(); render();
-  return true;
+function renderOrders(hit){
+  const el=document.getElementById("orders"); if(!el) return;
+  el.innerHTML = orders.map(o=>{
+    const p = Math.max(0,o.pat/o.max), col = p>.5?"#5fae6a":p>.25?"#f2b134":"#e85d5d";
+    const face = o.done?"😊":o.gone?"😤":p<=.25?"😠":o.g.ico;
+    return `<div class="ord${o.done?" done":""}${o.gone?" gone":""}${o===hit?" hit":""}">
+      <span class="gst">${face}</span>
+      <span class="body"><span class="need">${o.need.map(x=>`<span class="it">${ITEMS[x.c]}<b>${Math.min(x.got,x.want)*3}/${x.want*3}</b></span>`).join("")}</span>
+      <span class="pat"><i style="width:${p*100}%;background:${col}"></i></span></span>
+      <span class="rw">${o.done?"✅":o.gone?"❌":"🪙"+o.reward}</span></div>`; }).join("") || `<div class="ord done"><span class="gst">🌙</span><span class="body">今天没有客人了</span></div>`;
 }
 
-/* ---------- 胜负与奖励 ---------- */
-// 星级基准 par = 本关参考解步数 ×1.15(向上取整)。
-// ★ 全项目唯一出口：calcStars() 与 winNote(assistNote) 共用，禁止别处再算一遍。
-//   ★★★ = 未用辅助 且 步数 ≤ par
-//   ★★  = 未用辅助但超 par，或 用了辅助但步数 ≤ par
-//   ★   = 其余(用了辅助 且 超 par)
-// 护星徽章(shielded)：本关使用辅助不计入掉星，仍按「零辅助」口径评星。
-function starPar(){ return Math.ceil(refSteps * 1.15); }
-function calcStars(){
-  const par = starPar();
-  const assisted = !shielded && (usedUndo || usedHint || addedTubes>0 || adStepsUsed>0);
-  const withinPar = moves <= par;
-  if(!assisted && withinPar) return 3;
-  if(withinPar) return 2;        // 有辅助，但步数达标
-  if(!assisted) return 2;        // 无辅助，但步数超标
-  return 1;                      // 有辅助且超标
+/* ---------- 流程：开局 / 胜 / 负 / 复活 / 广告占位 ---------- */
+const mask=document.getElementById("mask"), card=document.getElementById("card");
+function modal(html){ card.innerHTML=html; mask.classList.add("on"); }
+function closeModal(){ mask.classList.remove("on"); }
+
+function startLevel(lv){
+  level = lv; const g = genLevel(lv); tiles = g.tiles; P = g.P;
+  slot=[]; flying=[]; fx=[]; combo=0; slotCap=SLOT_N; slotFlash=0; revived=false; busy=false;
+  tools = {shake:1, back:1, peek:1}; state="play";
+  layout(); makeOrders(); renderOrders(); updateHUD(); closeModal();
+  const T = TALES[(lv-1)%TALES.length];
+  state="pause";
+  modal(`<h2>📜 ${T.t}</h2><p>${T.s}</p>${lv===1?'<p style="font-size:13px">点最上面的东西放进篮子，<b>3 个一样的</b>就收好了。<br>篮子 7 格，<b>装满就输</b>。</p>':''}<div class="story">📋 今日客人：${orders.map(o=>o.g.ico+' '+o.g.n+' 要 '+o.need.map(x=>ITEMS[x.c]+'×'+(x.want*3)).join(' ')).join('<br>')}<br><small>⏳ 每拿一件，客人耐心就少一点。<b>交一单 = 篮子 +1 格</b>（最多 9 格）+ 金币！</small></div><button class="btn" id="bGo">${lv===2?"⚠️ 我偏要试试":"开始收拾"}</button>`);
+  document.getElementById("bGo").onclick = ()=>{ closeModal(); state="play"; cat("start"); };
 }
-// 胜利弹窗「为什么不是三星」的说明文案 —— 与 calcStars / help 同为「评级口径三处同步」之一。
-// 铁律：文案里声明的星级上限必须与 calcStars() 的实得结果一致，既不"默默扣星"，也绝不"比实得乐观"。
-function assistNote(){
-  const rawAssist = usedUndo || usedHint || addedTubes>0 || adStepsUsed>0;
-  const par = starPar();
-  const overPar = moves > par;
-  if(shielded){
-    // 徽章：辅助不计入掉星 → 上限只受步数影响
-    if(!rawAssist) return overPar
-      ? ("本关用了 " + moves + " 步，超过基准 " + par + " 步，最高 ★★。")
-      : "";
-    return overPar
-      ? ("本关使用了护星徽章：辅助不计入掉星；但步数 " + moves + " 步超过基准 " + par + " 步，按步数最高 ★★。")
-      : "本关使用了护星徽章：辅助操作不计入掉星，仍按步数评星。";
-  }
-  if(rawAssist){
-    const parts = [];
-    if(addedTubes>0) parts.push("广告加管 "+addedTubes+" 次");
-    if(adStepsUsed>0) parts.push("广告加步 "+adStepsUsed+" 次");
-    if(usedUndo) parts.push("撤销");
-    if(usedHint) parts.push("提示");
-    const used = "本关使用了" + parts.join("、");
-    // 非护星 + 有辅助：达标 → ★★；超基准 → 辅助与超步「双因叠加」，实得 ★，上限必须写 ★
-    return overPar
-      ? (used + "，且步数 " + moves + " 步超过基准 " + par + " 步，两个原因叠加，最高 ★。")
-      : (used + "，属辅助操作，最高 ★★。");
-  }
-  // 无辅助：唯一会掉星的就是"步数超基准"，必须说清楚差多少
-  return overPar ? ("本关用了 " + moves + " 步，超过基准 " + par + " 步，最高 ★★。") : "";
+
+function lose(){
+  state="lose"; SFX.lose(); vibrate([60,40,60]); cat("lose");
+  const left = tiles.filter(t=>t.alive).length;
+  modal(`<h2>😼 黑猫：${catSay}</h2><p>篮子满了……筐里只剩 <b>${left}</b> 件！</p>
+    ${revived?"":`<button class="btn blue" id="bRev">▶ 看视频 · 清出 3 格继续</button>`}
+    <button class="btn" id="bRetry">重新开始</button>
+    <button class="btn gray" id="bShareL">喊朋友来帮我过</button>`);
+  if(!revived) document.getElementById("bRev").onclick = ()=>fakeAd(()=>{ revived=true; state="play";
+    const take=slot.splice(0,3); pushBack(tiles, take.map(s=>s.color));
+    closeModal(); updateHUD(); toast("复活！再小心点～"); });
+  document.getElementById("bRetry").onclick = ()=>startLevel(level);
+  document.getElementById("bShareL").onclick = ()=>share(`黑猫把我的筐弄乱了，《拾线铺》第${level}关只剩${left}件没收完！你能过吗？`);
 }
+
 function win(){
-  beep(880,0.12,"sine",0.07); setTimeout(()=>beep(1175,0.14,"sine",0.07),120);
-  if(!winVibrated) haptic([22,40,22]); // 过关：双段震动（手势内已触发则跳过，避免重复震动）
-  winVibrated = false;
-  const st = calcStars();
-  let reward;
-  let extra = "";
-  if(mode==="daily"){
-    if(dailyDoneDate !== dailyDate){   // 每日谜题：每天只发一次首通奖励（已有幂等，逻辑不动）
-      dailyDoneDate = dailyDate; dailyMoves = moves;
-      reward = 10 + st*5 + DAILY_FIRST_BONUS; extra = "（每日谜题首通）";
-    } else {
-      reward = 10 + st*5;
-    }
-  } else {
-    // 通关奖励幂等化：首次通关发全额；重复通关只发"星级提升的差额"，避免重玩刷币冲垮商城经济
-    const prevBest = bestStars[level] || 0;
-    bestStars[level] = Math.max(prevBest, st);
-    reward = prevBest === 0 ? (10 + st*5) : Math.max(0, st - prevBest) * 5;
-  }
-  coins += reward;
-  save();
-  // 结算翻倍广告位(激励视频转化率最高的位置)：reward=0(重复通关无差额)时不展示，避免"翻倍 0 金币"的尴尬
-  winBaseReward = reward; winDoubled = false; winExtra = extra;
-  const drow = document.getElementById("winDoubleRow"), dbtn = document.getElementById("btnWinDouble");
-  if(reward > 0 && drow && dbtn){ drow.style.display = ""; dbtn.textContent = "看广告金币翻倍（+" + reward + "）"; dbtn.disabled = false; }
-  else if(drow){ drow.style.display = "none"; }
-  // 每日模式：按钮改文案（再玩一次 / 回到闯关），避免误以为能"下一关"
-  document.getElementById("btnReplay").textContent = mode==="daily" ? "再玩一次" : "重玩";
-  document.getElementById("btnNext").textContent   = mode==="daily" ? "回到闯关" : "下一关";
-  document.getElementById("winStars").textContent = "★".repeat(st)+"☆".repeat(3-st);
-  document.getElementById("winReward").textContent = reward === 0
-    ? "+0 金币（已通关过）"
-    : ("+"+reward+" 金币"+extra);
-  // 掉星有两条路径：①用了辅助；②没用辅助但步数超基准。两条都必须解释，不能默默扣（护星徽章除外）
-  const note = document.getElementById("winNote");
-  const nt = assistNote();
-  if(nt){ note.textContent = nt; note.style.display = ""; }
-  else { note.textContent = ""; note.style.display = "none"; }
-  // 每日谜题：生成「日期 + 步数」成绩文案，供一键复制分享（仅每日模式出现）
-  const srow = document.getElementById("winShareRow");
-  if(mode==="daily"){
-    document.getElementById("winShareText").textContent = dailyShareText();
-    if(srow) srow.style.display = "";
-  } else if(srow) srow.style.display = "none";
-  // 织图终点（毛线主题）：普通模式展示本章挂毯并点亮本次进度（新增格逐格点亮）；
-  // 每日织补不展示织图。纯表现层，已织格数由 level/chapterOf 推导，不新增存档字段。
-  const tcv = document.getElementById("tapestryCv");
-  if(tcv){
-    if(mode==="daily"){ tcv.style.display = "none"; }
-    else { tcv.style.display = "block"; drawTapestry(tcv); }
-  }
-  document.getElementById("winOverlay").style.display="flex";
-  refreshRail();
-  render();
+  state="win"; SFX.win(); vibrate([20,30,20,30,80]); cat("win");
+  const gain = level===2 ? 3 : level===10 ? 4 : 1;
+  const allOrd = orderLost===0 && orderDone>0;
+  const bonus = allOrd ? 1 : 0;
+  save.coins += coinsGot;
+  save.stars += gain + bonus; const isNew = save.level===level; if(isNew) save.level = Math.min(LEVELS.length, level+1);
+  persist(); updateHUD();
+  for(let i=0;i<5;i++) setTimeout(()=>burst(W*(.2+Math.random()*.6), H*.3, COLORS[i%9].c), i*120);
+  const brag = level===2 ? `<p>🏆 你超过了 <b>77%</b> 的织匠！</p>` : "";
+  modal(`<h2>🎉 收拾完啦！</h2><p>😾 黑猫：${catSay}</p>${brag}<p>获得 ⭐ × ${gain+bonus}${level===10?"（Boss 奖励）":""}${bonus?"（零差评 +1）":""}</p><p>📋 完成订单 ${orderDone} 单${orderLost?` · 气走 ${orderLost} 位`:''} · 🪙 +${coinsGot}</p>
+    <button class="btn blue" id="bDbl">▶ 看视频 · 星星翻倍</button>
+    <button class="btn" id="bShop">去线铺修东西 🏠</button>
+    ${level<LEVELS.length?`<button class="btn gray" id="bNext">下一关</button>`:`<p>Demo 共 10 关，感谢试玩！</p>`}
+    ${level===2?`<button class="btn gray" id="bShareW">炫耀一下</button>`:""}`);
+  document.getElementById("bDbl").onclick = function(){ fakeAd(()=>{ save.stars+=gain; persist(); updateHUD(); this.remove(); toast("⭐ +"+gain); }); };
+  document.getElementById("bShop").onclick = ()=>openShop();
+  const n=document.getElementById("bNext"); if(n) n.onclick = ()=>startLevel(level+1);
+  const sw=document.getElementById("bShareW"); if(sw) sw.onclick = ()=>share("《拾线铺》第2关只有23%的人能过，我过了！你来试试？");
 }
 
-/* ---------- 按钮 ---------- */
-function doUndo(){
-  if(animating){ skipAnim(); if(anyModalOpen()) return; }  // 动画中撤销：先跳过动画再回退
-  clearHint();
-  if(history.length===0){ toast("无可撤销"); return; }
-  tubes = history.pop(); moves=Math.max(0,moves-1); selected=-1;
-  // 撤销栈里只存「普通移动」，广告加管不入栈 → 直接回填会把玩家看广告换来的空管吞掉，
-  // 而 addedTubes 仍是旧值(白扣一次加管机会、HUD 与实际管数不符)。
-  // 这里按 baseTubes+addedTubes 把付费空管补回管尾(与 addTube 的追加位置一致)。
-  const want = baseTubes + addedTubes;
-  while(tubes.length < want) tubes.push([]);
-  // 有撤销券则优先消耗(该次撤销不计入辅助)；否则按旧口径置 usedUndo
-  if(undoTickets > 0){ undoTickets--; save(); toast("撤销券 -1"); }
-  else usedUndo=true;
-  beep(440,0.05); hideDeadlock(); render();
+// 广告占位：模拟 1.5 秒激励视频（接微信 wx.createRewardedVideoAd 时替换此函数）
+function fakeAd(onReward){
+  modal(`<h2>📺 广告播放中…</h2><p>（Demo 占位，1.5 秒后发放奖励）</p>`);
+  setTimeout(()=>{ closeModal(); onReward(); }, 1500);
 }
-// 力竭弹窗的「撤销一步」：与 doUndo 行为对齐，仅把 hideDeadlock 换成 hideExhausted。
-// history 为空时仍 toast「无可撤销」且保持弹窗打开；成功撤销则关闭力竭弹窗（moves 已减 1，重新低于 moveLimit 可继续落子）。
-// 不引入任何新单关状态——usedUndo 已在 restartSameBoard 的归零清单中。
-function doUndoExhausted(){
-  if(animating){ skipAnim(); if(anyModalOpen()) return; }
-  clearHint();
-  if(history.length === 0){ toast("无可撤销"); return; }
-  tubes = history.pop(); moves = Math.max(0, moves - 1); selected = -1;
-  const want = baseTubes + addedTubes;
-  while(tubes.length < want) tubes.push([]);
-  if(undoTickets > 0){ undoTickets--; save(); toast("撤销券 -1"); }
-  else usedUndo = true;
-  beep(440,0.05); hideExhausted(); render();
+function adPrompt(text, onReward){
+  const prev = state; state="pause";
+  modal(`<h2>🎁 道具用完啦</h2><p>${text}</p><button class="btn blue" id="bAd">▶ 看视频领取</button><button class="btn" id="bCoin">🪙 30 金币买 1 次（有 ${save.coins}）</button><button class="btn gray" id="bNo">算了</button>`);
+  document.getElementById("bCoin").onclick = ()=>{ if(save.coins<30) return toast("金币不够，多做订单吧"); save.coins-=30; persist(); state=prev; closeModal(); onReward(); updateHUD(); };
+  document.getElementById("bAd").onclick = ()=>fakeAd(()=>{ state=prev; onReward(); updateHUD(); });
+  document.getElementById("bNo").onclick = ()=>{ state=prev; closeModal(); };
 }
-document.getElementById("btnUndo").onclick=doUndo;
-document.getElementById("btnHint").onclick=()=>{
-  if(animating){ skipAnim(); if(anyModalOpen()) return; }  // 动画中提示：先跳过动画再给建议
-  const r = solve(clone(tubes));
-  if(r && r.first){
-    // 有提示券则优先消耗(该次提示不计入辅助)；否则按旧口径置 usedHint
-    if(hintTickets > 0){ hintTickets--; save(); toast("提示券 -1"); }
-    else usedHint=true;
-    flashHint(r.first);
-  } else toast("无可用提示");
-};
-function flashHint(pair){
-  hintPair=pair;
-  // 源管用既有蓝光晕(selected)，目标管用琥珀虚线框(hintTarget)：一眼看清"从哪倒到哪"
-  selected=pair[0];
-  hintTarget=pair[1];
-  startPulse(); render();
-  clearTimeout(flashHint._t);
-  flashHint._t = setTimeout(()=>{
-    hintTarget=-1; hintPair=null;
-    if(selected===pair[0]) selected=-1;   // 玩家若已自己点选，别抢他的选中态
-    render();
-  }, 1200);
-  toast("建议：蓝框管 → 琥珀框管");
+function share(text){
+  const url = location.protocol.startsWith("http") ? location.href : "https://example.com/";
+  try{ if(navigator.share){ navigator.share({title:"拾线铺", text, url}); return; } }catch(e){}
+  try{ navigator.clipboard.writeText(text+" "+url); toast("已复制，去粘贴给朋友吧"); }catch(e){ toast(text); }
 }
-document.getElementById("btnRestart").onclick=()=>{ if(mode==="daily") startDaily(); else restartSameBoard(); };
-document.getElementById("btnAd").onclick=()=>{
-  // 限步关且已用满加步次数：先看广告也拿不到，直接提示（避免"看完广告却没加步"）
-  if(moveLimit>0 && adStepsUsed>=AD_BOOST_MAX){ toast("本关加步次数已用完（"+AD_BOOST_MAX+" 次）"); return; }
-  if(noAds){ grantAdBoost(); render(); }                 // 去广告卡：免费领取同奖励，不播广告（修缺陷 B）
-  else showAd(()=>{ grantAdBoost(); render(); });
-};
-// 去广告内购：底部独立按钮已移除(与右侧活动栏入口重复)，统一由右侧「🚫去广告」入口调用
-function buyNoAds(){
-  if(noAds){ toast("已拥有去广告卡"); return; }
-  // 模拟米大师/应用内购
-  showPurchase(()=>{ noAds=true; save(); toast("去广告卡 购买成功"); });
-}
-document.getElementById("btnMute").onclick=()=>{
-  muted=!muted; save();
-  document.getElementById("btnMute").textContent = muted?"🔇 静音":"🔊 音效";
-};
-function showHelp(){ document.getElementById("helpOverlay").style.display="flex"; }
-document.getElementById("btnHelp").onclick=showHelp;
-// 说明分层：默认只给「操作 / 能倒 / 过关」3 条(首次自动弹时够用)，
-// 进阶规则(限步/星级/商城/加管/侧栏)折叠起来按需展开 —— 首进不再是一篇要滚两屏的说明书。
-document.getElementById("btnHelpMore").onclick=()=>{
-  const m = document.getElementById("helpMore");
-  const b = document.getElementById("btnHelpMore");
-  const open = m.style.display !== "none";
-  m.style.display = open ? "none" : "";
-  b.textContent = open ? "查看完整规则" : "收起完整规则";
-};
-document.getElementById("btnHelpClose").onclick=()=>{
-  document.getElementById("helpOverlay").style.display="none";
-  if(pendingSign) showSign();
-};
-document.getElementById("helpOverlay").addEventListener("click", ev=>{
-  if(ev.target.id==="helpOverlay") document.getElementById("helpOverlay").style.display="none";
-});
-document.getElementById("entryOverlay").addEventListener("click", ev=>{
-  if(ev.target.id==="entryOverlay") document.getElementById("entryOverlay").style.display="none";
-});
-document.getElementById("signOverlay").addEventListener("click", ev=>{
-  if(ev.target.id==="signOverlay") closeSign();   // 点遮罩也能关，杜绝「进得去出不来」
-});
-// 结算「金币翻倍」：再补一份与本次结算等额的金币(不是乘算，避免与"星级差额"口径打架)。
-// 去广告卡用户按 D3 口径免费发放同奖励，不播广告。
-function grantWinDouble(){
-  if(winDoubled || winBaseReward <= 0) return false;
-  winDoubled = true;
-  coins += winBaseReward; save();
-  document.getElementById("winReward").textContent = "+" + (winBaseReward*2) + " 金币" + winExtra;
-  const drow = document.getElementById("winDoubleRow");
-  if(drow) drow.style.display = "none";
-  toast("金币翻倍，+" + winBaseReward);
-  render();
-  return true;
-}
-document.getElementById("btnWinDouble").onclick=()=>{
-  if(winDoubled || winBaseReward <= 0){ toast("本次奖励已翻倍"); return; }
-  if(noAds){ grantWinDouble(); return; }         // 去广告卡：免费领同奖励，不播广告
-  showAd(grantWinDouble);
-};
-document.getElementById("btnReplay").onclick=()=>{
-  document.getElementById("winOverlay").style.display="none";
-  if(mode==="daily") startDaily(); else restartSameBoard();   // 重玩必须回到同一题面，否则星级差额奖励不自洽
-};
-document.getElementById("btnNext").onclick=()=>{
-  document.getElementById("winOverlay").style.display="none";
-  if(mode==="daily"){ mode="normal"; startLevel(level); }     // 每日模式：退出每日回到闯关
-  else { level++; save(); startLevel(level); }
-};
-// 每日成绩分享：一键复制「日期 + 步数」文案 + 链接(链接一律走 shareUrl()，不硬编码域名)
-document.getElementById("btnWinShare").onclick=()=>{
-  copyText(dailyShareText() + " " + shareUrl()).then(ok=>{
-    toast(ok ? "成绩已复制，去分享给好友吧" : "复制失败，请长按上方文字手动复制");
-  });
-};
-document.getElementById("winShareText").onclick=()=>{ document.getElementById("btnWinShare").click(); };
-/* 每日谜题入口的三个按钮 */
-document.getElementById("btnDailyStart").onclick=()=>{
-  document.getElementById("dailyOverlay").style.display="none";
-  startDaily();
-};
-document.getElementById("btnDailyClose").onclick=()=>{
-  document.getElementById("dailyOverlay").style.display="none";
-};
-document.getElementById("btnDailyExit").onclick=()=>{
-  document.getElementById("dailyOverlay").style.display="none";
-  mode="normal"; startLevel(level); toast("已回到闯关");
-};
-document.getElementById("dailyOverlay").addEventListener("click", ev=>{
-  if(ev.target.id==="dailyOverlay") document.getElementById("dailyOverlay").style.display="none";
-});
-/* 分享界面按钮 */
-document.getElementById("btnShareCopy").onclick=()=>{
-  copyText(shareUrl()).then(ok=>{
-    toast(ok ? "链接已复制，去粘贴给好友吧" : "复制失败，请长按上方链接手动复制");
-    if(ok) rewardShare();
-  });
-};
-document.getElementById("btnSharePoster").onclick=()=>{
-  try{
-    document.getElementById("sharePoster").src = makePoster();
-    document.getElementById("sharePosterRow").style.display = "block";
-    document.getElementById("shareSaveRow").style.display = "flex";
-    rewardShare();
-    toast("海报已生成，保存后发给好友");
-  }catch(e){ toast("海报生成失败，可直接复制链接分享"); }
-};
-document.getElementById("btnShareSave").onclick=()=>{
-  try{
-    const a = document.createElement("a");
-    a.href = document.getElementById("sharePoster").src;
-    a.download = "收纳大师-分享海报.png";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    toast("已保存海报（手机可长按图片保存）");
-  }catch(e){ toast("保存失败，可长按海报图片保存"); }
-};
-document.getElementById("shareLinkBox").onclick=()=>{ document.getElementById("btnShareCopy").click(); };
-document.getElementById("btnShareClose").onclick=()=>{
-  document.getElementById("shareOverlay").style.display="none";
-};
-document.getElementById("shareOverlay").addEventListener("click", ev=>{
-  if(ev.target.id==="shareOverlay") document.getElementById("shareOverlay").style.display="none";
-});
-document.getElementById("btnDeadUndo").onclick=doUndo;
-document.getElementById("btnDeadAd").onclick=()=>{
-  // 必须在放广告之前判上限：否则玩家看完广告才被告知加不了，是明显的体验事故
-  if(addedTubes >= MAX_ADD_TUBES){ toast("本关加管次数已用完（"+MAX_ADD_TUBES+" 次）"); return; }
-  hideDeadlock(); // 先让出顶层，避免遮挡广告层
-  if(noAds){ addTube(); toast("已加一根空管 ("+addedTubes+"/"+MAX_ADD_TUBES+")"); return; }
-  showAd(()=>{
-    if(addTube()) toast("已加一根空管 ("+addedTubes+"/"+MAX_ADD_TUBES+")");
-  });
-};
-document.getElementById("btnDeadRestart").onclick=()=>{ hideDeadlock(); if(mode==="daily") startDaily(); else restartSameBoard(); };
-document.getElementById("btnExhaustedAd").onclick=()=>{
-  if(moveLimit>0 && adStepsUsed>=AD_BOOST_MAX){ toast("本关加步次数已用完"); return; }
-  hideExhausted();
-  if(noAds){ grantAdBoost(); render(); }                 // 去广告卡：免费领取同奖励，不播广告
-  else showAd(()=>{ grantAdBoost(); render(); });
-};
-document.getElementById("btnExhaustedCoin").onclick=()=>{
-  if(adStepsUsed>=AD_BOOST_MAX){ toast("本关加步次数已用完"); return; }
-  if(coins<40){ toast("金币不足"); return; }
-  coins -= 40; save();
-  moveLimit += 5; adStepsUsed++;
-  syncExhaustedBtns(); render();
-  toast("+5 步已发放");
-};
-document.getElementById("btnExhaustedRestart").onclick=()=>{ hideExhausted(); restartSameBoard(); };
-document.getElementById("btnExhaustedUndo").onclick=doUndoExhausted;
-document.getElementById("btnSignClaim").onclick=claimSign;
 
-/* ---------- 活动入口侧栏：留存/活跃(左) + 促销/变现(右) 常驻入口，可滑动，点哪个开哪个 ----------
-   新增一个活动 = 在 RAIL_ITEMS 里加一条 {id,ico,name}，再在 openEntry 里决定打开哪个界面。
-   侧栏 z-index(10) 低于弹窗(50)，弹窗期间被遮罩覆盖，不会误触。                                    */
-const RAIL_ITEMS = {
-  left: [
-    {id:"sign",  ico:"📅", name:"签到", hot:true},
-    {id:"daily", ico:"🧩", name:"每日"},
-    {id:"share", ico:"📤", name:"分享"},
-    {id:"rank",  ico:"🏆", name:"排行", tbd:true}   // tbd=未实现，视觉置灰(点按仍弹功能说明)
-  ],
-  right: [
-    {id:"shop",  ico:"🛒", name:"商城"},
-    {id:"first", ico:"🎁", name:"首充", tbd:true},
-    {id:"card",  ico:"💳", name:"月卡", tbd:true},
-    {id:"noads", ico:"🚫", name:"去广告"}
-  ]
-};
-// 各入口的文案元数据(已实现入口也留一份，便于"入口=说明"统一)
-const ENTRY_META = {
-  daily:{ico:"🧩", n:"每日谜题", d:"每天一道固定题面(按日期定种子)，全服同一关，不限步，首通 +60 金币。"},
-  share:{ico:"📤", n:"分享给好友", d:"复制 GitHub Pages 链接或生成分享海报，好友点开即玩；每日首次分享 +30 金币。"},
-  rank: {ico:"🏆", n:"好友排行", d:"按通关数与星级排行，接入小游戏开放数据域后开启。"},
-  shop: {ico:"🛒", n:"道具商城", d:"用金币兑换提示 / 撤销 / 加步等便利道具，不售卖任何数值。"},
-  first:{ico:"🎁", n:"首充礼包", d:"首次充值额外赠送永久去广告卡(安卓走米大师，iOS 端隐藏)。"},
-  card: {ico:"💳", n:"每日月卡", d:"连续 30 天每天领金币(安卓走米大师，iOS 端隐藏)。"},
-  noads:{ico:"🚫", n:"去广告卡", d:"一次性内购，永久移除全部广告位。"}
-};
-const railBtns = {}, railDots = {};
-function buildRail(){
-  ["left","right"].forEach(function(side){
-    const box = document.getElementById(side==="left" ? "railL" : "railR");
-    if(!box) return;
-    box.textContent = "";
-    RAIL_ITEMS[side].forEach(function(it){
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = (it.hot ? "hot " : "") + (it.tbd ? "tbd" : "");
-      if(it.tbd) b.title = "功能开发中";
-      b.setAttribute("data-entry", it.id);
-      const ic = document.createElement("span"); ic.className="ico"; ic.textContent = it.ico;
-      const nm = document.createElement("span"); nm.className="nm"; nm.textContent = it.name;
-      const dt = document.createElement("span"); dt.className="dot";
-      b.appendChild(ic); b.appendChild(nm); b.appendChild(dt);
-      b.addEventListener("click", function(){ openEntry(it.id); });
-      box.appendChild(b);
-      railBtns[it.id] = b; railDots[it.id] = dt;
-    });
-  });
-  refreshRail();
-}
-// 角标刷新：签到待领取(红点) + 每日谜题今天还没通关(红点)，促进活跃
-function refreshRail(){
-  const s = railDots.sign;
-  if(s) s.style.display = pendingSign ? "block" : "none";
-  const d = railDots.daily;
-  if(d) d.style.display = (dailyDoneDate !== dateStr()) ? "block" : "none";
-}
-// 通用「功能预告」弹窗(未实现活动的统一出口)
-function showEntry(id){
-  const m = ENTRY_META[id] || {ico:"✨", n:"敬请期待", d:"该功能正在开发中。"};
-  document.getElementById("entryIco").textContent = m.ico;
-  document.getElementById("entryTitle").textContent = m.n;
-  document.getElementById("entryDesc").textContent = m.d;
-  document.getElementById("entryOverlay").style.display = "flex";
-}
-// 入口路由：已实现的直达对应界面，未实现的展示预告弹窗 —— "点哪个开哪个"
-function openEntry(id){
-  if(id==="sign"){ showSign(); return; }                                 // 每日签到(已实现)
-  if(id==="daily"){ showDaily(); return; }                                // 每日谜题(已实现)
-  if(id==="share"){ showShare(); return; }                                // 分享给好友(已实现)
-  if(id==="shop"){ showShop(); return; }                                  // 道具商城(金币兑换，已实现)
-  if(id==="noads"){ buyNoAds(); return; }                                 // 去广告内购(已实现)
-  showEntry(id);                                                          // 其余：预告
-}
-buildRail();
-document.getElementById("btnEntryClose").onclick=()=>{
-  document.getElementById("entryOverlay").style.display="none";
-};
-
-/* ---------- 道具商城(金币兑换)：只兑换「便利 + 外观」，不售卖任何数值、
-   不提供任何「付费购买金币」入口、无抽奖/开箱式发放 —— 合规硬边界 ---------- */
-const SHOP_GOODS = [
-  {id:"hint1",         ico:"💡", name:"提示券 ×1",      price:30,  kind:"hint",   d:"点提示时优先消耗，该次提示不计入辅助"},
-  {id:"undo5",         ico:"↩️", name:"撤销券 ×5",      price:100, kind:"undo",   d:"撤销时优先消耗，该次撤销不计入辅助"},
-  {id:"shield",        ico:"🛡️", name:"护星徽章 ×1",    price:150, kind:"shield", d:"本关辅助操作不计入掉星，仍按步数评星"},
-  {id:"skin_frosted",  ico:"🎨", name:"皮肤：磨砂管身",  price:200, kind:"skin", skin:"frosted", d:"纯外观，不影响任何数值"},
-  {id:"skin_glass",    ico:"🎨", name:"皮肤：玻璃管身",  price:350, kind:"skin", skin:"glass",   d:"纯外观，不影响任何数值"},
-  {id:"skin_wood",     ico:"🎨", name:"皮肤：木纹管身",  price:500, kind:"skin", skin:"wood",    d:"纯外观，不影响任何数值"}
-];
-const shopBtns = {}, shopDescs = {};
-// 单个商品的按钮文案与可用态(金币不足/已拥有/已生效 → 置灰)
-function shopBtnState(g){
-  if(g.kind==="shield"){
-    if(shielded) return {label:"已生效", disabled:true, reason:"已生效"};
-    return {label:g.price+" 金币", disabled:coins<g.price, reason:"金币不足"};
-  }
-  if(g.kind==="skin"){
-    if(skinsOwned[g.skin]) return skinEquipped===g.skin
-      ? {label:"使用中", disabled:true, reason:""}
-      : {label:"使用", disabled:false, reason:""};
-    return {label:g.price+" 金币", disabled:coins<g.price, reason:"金币不足"};
-  }
-  return {label:g.price+" 金币", disabled:coins<g.price, reason:"金币不足"};
-}
-// 库存描述(随现实状态刷新)
-function shopStockText(g){
-  if(g.kind==="hint")  return "已持有 " + hintTickets + " 张";
-  if(g.kind==="undo")  return "已持有 " + undoTickets + " 张";
-  if(g.kind==="shield") return shielded ? "本关护星已生效" : "未使用";
-  if(g.kind==="skin")  return skinsOwned[g.skin] ? "已拥有" : "未拥有";
-  return "";
-}
-function renderShop(){
-  const box = document.getElementById("shopList");
-  if(!box) return;
-  box.textContent = "";
-  SHOP_GOODS.forEach(function(g){
-    const row = document.createElement("div");
-    row.className = "shoprow";
-    row.setAttribute("data-good", g.id);
-    const info = document.createElement("div");
-    info.className = "info";
-    const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = g.ico + " " + g.name;
-    const ds = document.createElement("div"); ds.className = "ds";
-    const st = shopBtnState(g);
-    ds.textContent = g.d + " · " + shopStockText(g) +
-      ((st.disabled && st.reason==="金币不足") ? "（" + st.reason + "）" : "");
-    info.appendChild(nm); info.appendChild(ds);
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "act" + (g.kind==="shield" ? " gold" : "");
-    btn.textContent = st.label;
-    btn.disabled = st.disabled;      // 置灰样式沿用 button.act[disabled]
-    btn.setAttribute("data-buy", g.id);
-    btn.addEventListener("click", function(){ buyGoods(g.id); });
-    row.appendChild(info); row.appendChild(btn);
-    box.appendChild(row);
-    shopBtns[g.id] = btn; shopDescs[g.id] = ds;
-  });
-  const c = document.getElementById("shopCoins");
-  if(c) c.textContent = "持有金币：" + coins;
-}
-function showShop(){ renderShop(); document.getElementById("shopOverlay").style.display = "flex"; }
-function closeShop(){ document.getElementById("shopOverlay").style.display = "none"; }
-// 购买/使用：金币不足或已达上限时按钮已置灰，这里再做一次防御性校验
-function buyGoods(id){
-  const g = SHOP_GOODS.filter(function(x){return x.id===id;})[0];
-  if(!g) return false;
-  if(g.kind==="shield" && shielded){ toast("本关护星徽章已生效"); return false; }
-  if(g.kind==="skin" && skinsOwned[g.skin]){   // 已拥有：免费切换
-    if(skinEquipped!==g.skin){ skinEquipped=g.skin; save(); renderShop(); render(); toast("已切换皮肤：" + SKINS[g.skin].name); }
-    return true;
-  }
-  if(coins < g.price){ toast("金币不足"); return false; }
-  coins -= g.price;                            // ★ 真正的金币消耗出口
-  if(g.kind==="hint") hintTickets += 1;
-  else if(g.kind==="undo") undoTickets += 5;
-  else if(g.kind==="shield") shielded = true;
-  else if(g.kind==="skin"){ skinsOwned[g.skin] = true; skinEquipped = g.skin; }
-  save();                                      // ★ 扣减后立即存档
-  renderShop(); render();
-  toast("已购买：" + g.name);
-  return true;
-}
-document.getElementById("btnShopClose").onclick=closeShop;
-document.getElementById("shopOverlay").addEventListener("click", ev=>{
-  if(ev.target.id==="shopOverlay") closeShop();   // 点遮罩也能关，杜绝「进得去出不来」
-});
-
-/* ---------- 广告/内购 占位(真实环境替换为小游戏SDK) ---------- */
-function showAd(done){
-  const ov=document.getElementById("adOverlay");
-  document.getElementById("adTitle").textContent="激励视频";
-  ov.style.display="flex";
-  setTimeout(()=>{ ov.style.display="none"; done&&done(); }, 1500);
-}
-function showPurchase(done){
-  const ov=document.getElementById("adOverlay");
-  document.getElementById("adTitle").textContent="内购：永久去广告卡 ¥6";
-  document.getElementById("adHint").textContent="（Demo 模拟，真实环境替换为 wx.requestMidasPayment）";
-  ov.style.display="flex";
-  setTimeout(()=>{ ov.style.display="none"; done&&done(); }, 1200);
+/* ---------- 线铺：修复 + 剧情（浪漫餐厅式元层） ---------- */
+function openShop(){
+  const prev = state; if(state==="play") state="pause";
+  const nBought = save.bought.length;
+  const next = SHOP.find((s,i)=>!save.bought.includes(i));
+  const grid = SHOP.map((s,i)=>`<div class="${save.bought.includes(i)?"on":""}" title="${s.n}">${s.ico}</div>`).join("");
+  const storyIdx = Math.floor(nBought/2) - 1;
+  const story = storyIdx>=0 ? `<div class="story">${STORY[Math.min(storyIdx,STORY.length-1)]}</div>` : `<div class="story"><b>奶奶：</b>灰雾过后，铺子全褪了色。拿星星来，一件件修回来吧。</div>`;
+  modal(`<h2>🏠 拾光线铺 <small style="font-size:13px">${nBought}/${SHOP.length}</small></h2>
+    <div id="shop">${grid}</div>${story}
+    ${next?`<button class="btn" id="bBuy">修复「${next.n}」 ⭐${next.cost}（有 ${save.stars}）</button>`:`<p>第一章全部修好啦！第二章敬请期待</p>`}
+    <button class="btn gray" id="bBack">${prev==="win"?"下一关":"返回"}</button>`);
+  const bb=document.getElementById("bBuy");
+  if(bb) bb.onclick = ()=>{
+    const i = SHOP.indexOf(next);
+    if(save.stars < next.cost) return toast("星星不够，去过关吧～");
+    save.stars -= next.cost; save.bought.push(i); persist(); updateHUD();
+    [659,784,988].forEach((f,k)=>setTimeout(()=>beep(f,.15,"triangle",.14),k*90));
+    const newStory = save.bought.length%2===0;
+    openShop(); if(newStory) toast("📖 解锁新剧情！");
+  };
+  document.getElementById("bBack").onclick = ()=>{
+    if(prev==="win" && level<LEVELS.length) return startLevel(level+1);
+    if(prev==="win") return closeModal();
+    state = prev==="pause"?"play":prev; closeModal();
+  };
 }
 
 /* ---------- 启动 ---------- */
-let genToken = 0; // 防止快速切关时旧生成覆盖新关卡
-function showGenMask(lv){
-  const ov = document.getElementById("genOverlay");
-  if(lv) document.getElementById("genLv").textContent = lv;
-  ov.style.display = "flex";
-}
-function hideGenMask(){ document.getElementById("genOverlay").style.display = "none"; }
-// 重开本关 = 复用当前题面（修缺陷 C：旧实现走 startLevel→重掷一道新题，等于免费换题绕开限步）
-function snapBoard(lv){
-  boardSnapshot = { level: (typeof lv === "number" ? lv : level), tubes: clone(tubes), refSteps: refSteps, baseTubes: baseTubes };
-}
-function restartSameBoard(){
-  if(!boardSnapshot){ startLevel(level); return; }   // 兜底：无快照则退化成重新生成
-  level = boardSnapshot.level;                        // 同步全局关卡号(HUD / 最佳星级口径)
-  tubes = clone(boardSnapshot.tubes);                // 深拷贝，避免与 history/快照共享数组引用
-  refSteps = boardSnapshot.refSteps;
-  baseTubes = boardSnapshot.baseTubes;
-  mode = "normal";
-  shielded = false;                                  // 护星徽章单关生效：重开归零
-  clearHint(true);
-  selected=-1; moves=0; history=[];
-  usedUndo=false; usedHint=false; addedTubes=0; adStepsUsed=0;
-  syncDeadAdBtn();
-  // 限步：与生成时同一基准（同一题面 → 同样 moveLimit）
-  moveLimit = level>6 ? Math.ceil(refSteps * 1.35) : 0;
-  hideDeadlock(); hideExhausted(); hideGenMask();
-  layout(); render();
-}
-function startLevel(lv){
-  mode = "normal";              // 线性闯关模式(每日谜题走 startDaily)
-  const my = ++genToken;
-  // 自适应遮罩：生成已经很快(见 GEN_STAGES)，普通关卡直接同步生成 ——
-  // 不留遮罩就不会「闪一下」；只有上次生成确实慢(低端机/极端关卡)时才先出遮罩让出主线程。
-  const needMask = genMsLast > GEN_MASK_MS;
-  if(needMask) showGenMask("第 " + lv + " 关");
-  const build = ()=>{
-    if(my !== genToken) return; // 已被更新的关卡取代
-    const g = genLevel(lv);
-    tubes = g.tubes;
-    refSteps = g.refSteps;         // 本关参考解步数(生成时随题面一起记录)
-    shielded = false;              // 护星徽章单关生效：切关归零
-    clearHint(true);
-    selected=-1; moves=0; history=[];
-    usedUndo=false; usedHint=false; addedTubes=0; adStepsUsed=0;
-    baseTubes = tubes.length;      // 记录初始管数，撤销时据此补回付费加管
-    snapBoard(lv);                 // 缓存初始题面快照(含关卡号)，供「重开本关」复用同一题面
-    syncDeadAdBtn();
-    // 限步：第 7 关起按「参考步数 ×1.35」定上限(向上取整)；第 6 关及以前不限步
-    moveLimit = lv>6 ? Math.ceil(refSteps * 1.35) : 0;
-    // 场景化触发：限步规则只在玩家真正踏进限步关时解释一次(取代写进首进说明)，不留常驻认知负担
-    if(moveLimit > 0 && !sawLimitTip){ sawLimitTip = true; save(); toast("本关限步 " + moveLimit + " 步，顶部常显剩余步数", 2800); }
-    hideDeadlock(); hideGenMask();
-    layout(); render();
-  };
-  if(needMask) setTimeout(build, 0); else build();
-}
-window.addEventListener("resize", resize);
-window.addEventListener("orientationchange", ()=>setTimeout(resize,120));
-window.addEventListener("load", ()=>setTimeout(resize, 0));
-load();
-document.getElementById("btnMute").textContent = muted?"🔇 静音":"🔊 音效";
-try{
-  // 先量尺寸再生成：生成已改为「够快就同步」，若先生成，build() 里的 layout() 会拿到 W=0/H=0
-  resize();
-  startLevel(level);
-}catch(err){ showFatal((err&&err.message)||String(err)); }
-// 首次进入自动弹一次过关说明(sawHelp 存档，避免每次都弹)
-detectSign();
-refreshRail();  // 签到待领取时点亮侧栏红点
-if(!sawHelp){
-  document.getElementById("helpOverlay").style.display = "flex";
-  sawHelp = true; save();
-  // 首次：说明关闭后再弹签到(避免两个弹窗同时压屏)
-} else if(pendingSign){
-  showSign();
-}
-if(window.ResizeObserver){ try{ new ResizeObserver(()=>resize()).observe(stage); }catch(e){} }
-// 首帧尺寸可能未就绪：轮询兜底直至拿到有效尺寸
-let __bootTries = 0;
-(function bootSize(){
-  if((W < 10 || H < 10 || cv.width < 10) && __bootTries++ < 120){
-    resize();
-    requestAnimationFrame(bootSize);
-  }
-})();
+window.addEventListener("load", ()=>{ startLevel(save.level); requestAnimationFrame(draw); });
+
+
 </script>
 </body>
 </html>
