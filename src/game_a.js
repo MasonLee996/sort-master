@@ -36,7 +36,7 @@ function layout(){
   const slotH = slotW/SLOT_MAX;
   slotY = H - slotH - 14;
   // 筐（场景主体）：顶部留 70px 给黑猫与对白
-  const top = 70, bot = slotY - 18;
+  const top = COUNTER_H + 6, bot = slotY - 18;
   cell = Math.min(W - 16, (bot - top) * 1.15);          // 筐的宽度
   ox = (W - cell)/2; oy = top;
   BASKET = {x:ox, y:top, w:cell, h:bot-top};
@@ -100,7 +100,7 @@ function drawScene(now){
   ctx.strokeStyle="#7a4c22"; ctx.lineWidth=7; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.stroke();
 }
 function drawCat(now){
-  const x=W-62, y=8+Math.sin(now/400)*2, s=1;
+  const x=W-66, y=COUNTER_H-66+Math.sin(now/400)*2, s=1;   // 黑猫蹲在柜台上
   ctx.save(); ctx.translate(x,y);
   if(catMood==="lose"||catMood==="danger"){ ctx.translate(0,Math.sin(now/60)*2); }
   ctx.fillStyle="#2b2320";
@@ -118,14 +118,11 @@ function drawCat(now){
   // 对白气泡
   if(catSay && now < catSayUntil){
     ctx.font="bold 14px sans-serif"; const tw=ctx.measureText(catSay).width+20;
-    const bx=Math.max(8,x-tw-4), by=14;
+    const bx=Math.max(8,W-tw-8), by=COUNTER_H+4;
     ctx.fillStyle="#fff"; roundRect(bx,by,tw,30,14); ctx.fill(); ctx.strokeStyle="#2b2320"; ctx.lineWidth=2; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bx+tw-2,by+12); ctx.lineTo(bx+tw+10,by+18); ctx.lineTo(bx+tw-2,by+22); ctx.fillStyle="#fff"; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(W-44,by+2); ctx.lineTo(W-36,by-8); ctx.lineTo(W-28,by+2); ctx.fillStyle="#fff"; ctx.fill();
     ctx.fillStyle="#2b2320"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(catSay,bx+10,by+15);
   }
-  // 关卡标题（左上）
-  ctx.fillStyle="#6b4428"; ctx.font="bold 15px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
-  ctx.fillText("📜 "+TALES[(level-1)%TALES.length].t, 10, 16);
 }
 let catMood="start", catSay="", catSayUntil=0;
 function cat(mood){ catMood=mood; const L=CAT_LINES[mood]; catSay=L[Math.floor(Math.random()*L.length)]; catSayUntil=performance.now()+2200; }

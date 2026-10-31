@@ -2,13 +2,17 @@
 function draw(now){
   ctx.clearRect(0,0,W,H);
   drawScene(now);
+  drawCounter(now);
   let sx=0, sy=0;
   if(shakeT>0){ sx=(Math.random()-.5)*10*shakeT; sy=(Math.random()-.5)*6*shakeT; shakeT=Math.max(0,shakeT-.04); }
   ctx.save(); ctx.translate(sx,sy);
   // 堆叠
-  const alive = tiles.filter(t=>t.alive).sort((a,b)=>a.z-b.z || a.y-b.y);
+  const alive = tiles.filter(t=>t.alive).sort((a,b)=>a.z-b.z || a.y-b.y), WANT = wantedSet();
   for(const t of alive){
     const r = tileRect(t), cov = isCovered(t,tiles);
+    // 客人要的、且现在能拿的：脉动金圈 —— 订单在筐里"看得见"
+    if(WANT[t.color] && !cov){ const pr = r.s*.56 + Math.sin(now/180)*2;
+      ctx.strokeStyle="rgba(242,177,52,.95)"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(r.x+r.s/2, r.y+r.s/2, pr, 0, 7); ctx.stroke(); }
     drawItem(r.x,r.y,r.s,t.color, cov && peekT<=0, t.rot);
   }
   ctx.restore();
@@ -31,6 +35,15 @@ function draw(now){
     const s=f.s0+(f.s1-f.s0)*e; drawItem(x,y,s,f.color,false,f.rot*(1-e));
     if(f.t>=1){ flying.splice(i,1); f.done(); }
   }
+  // 交付：收好的物件飞向客人
+  for(let i=deliverFx.length-1;i>=0;i--){ const d=deliverFx[i], e=(now-d.t0)/450; if(e<0) continue;
+    if(e>=1){ deliverFx.splice(i,1); burst(d.x1,d.y1,COLORS[d.c].c); continue; }
+    const k=1-Math.pow(1-e,2), x=d.x0+(d.x1-d.x0)*k, y=d.y0+(d.y1-d.y0)*k - Math.sin(e*Math.PI)*60;
+    drawItem(x-14,y-14,28*(1-e*.3),d.c,false,e*6); }
+  for(let i=floats.length-1;i>=0;i--){ const f=floats[i], e=(now-f.t0)/1400; if(e>=1){ floats.splice(i,1); continue; }
+    ctx.globalAlpha=1-e; ctx.font="bold 15px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.lineWidth=4; ctx.strokeStyle="#fff"; ctx.strokeText(f.s,Math.min(W-80,Math.max(80,f.x)),f.y+40-e*30);
+    ctx.fillStyle="#c0582a"; ctx.fillText(f.s,Math.min(W-80,Math.max(80,f.x)),f.y+40-e*30); ctx.globalAlpha=1; }
   // 特效粒子
   for(let i=fx.length-1;i>=0;i--){ const p=fx[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=.25; p.life-=.03;
     ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); ctx.globalAlpha=1; if(p.life<=0) fx.splice(i,1); }
@@ -73,7 +86,7 @@ function resolve(){
     let removed=0; const rs=[];
     slot = slot.filter((s,i)=>{ if(s.color==c && removed<3){ removed++; rs.push(slotRect(i)); return false; } return true; });
     rs.forEach(r=>burst(r.x+r.s/2,r.y+r.s/2,COLORS[c].c));
-    deliver(c);
+    deliver(c, rs);
     combo++; SFX.match(combo); vibrate(20); if(combo>=2) cat("combo");
     if(combo>=2) toast(["","","连消 ×2！","手感火热 ×3！","停不下来 ×4！","织神附体 ×"+combo+"！"][Math.min(combo,5)]);
   }}

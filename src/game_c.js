@@ -10,7 +10,7 @@ function startLevel(lv){
   layout(); makeOrders(); renderOrders(); updateHUD(); closeModal();
   const T = TALES[(lv-1)%TALES.length];
   state="pause";
-  modal(`<h2>📜 ${T.t}</h2><p>${T.s}</p>${lv===1?'<p style="font-size:13px">点最上面的东西放进篮子，<b>3 个一样的</b>就收好了。<br>篮子 7 格，<b>装满就输</b>。</p>':''}<div class="story">📋 今日客人：${orders.map(o=>o.g.ico+' '+o.g.n+' 要 '+o.need.map(x=>ITEMS[x.c]+'×'+(x.want*3)).join(' ')).join('<br>')}<br><small>⏳ 每拿一件，客人耐心就少一点。<b>交一单 = 篮子 +1 格</b>（最多 9 格）+ 金币！</small></div><button class="btn" id="bGo">${lv===2?"⚠️ 我偏要试试":"开始收拾"}</button>`);
+  modal(`<h2>📜 ${T.t}</h2><p>${T.s}</p>${lv===1?'<p style="font-size:13px">点最上面的东西放进篮子，<b>3 个一样的</b>就收好了。<br>篮子 7 格，<b>装满就输</b>。</p>':''}<div class="story">🔔 叮铃——${orders.map(o=>o.g.ico+' <b>'+o.g.n+'</b>：「'+ITEM_WHY[o.need[0].c]+'，要 '+o.need.map(x=>ITEMS[x.c]+'×'+(x.want*3)).join(' ')+'」').join('<br>')}<br><small>⏳ 每拿一件客人就更急一点；筐里<b style="color:#d99a1a">金圈</b>是客人要的。<b>交一单 = 篮子 +1 格</b>（最多 9 格）+ 金币！</small></div><button class="btn" id="bGo">${lv===2?"⚠️ 我偏要试试":"开始收拾"}</button>`);
   document.getElementById("bGo").onclick = ()=>{ closeModal(); state="play"; cat("start"); };
 }
 
@@ -38,7 +38,7 @@ function win(){
   persist(); updateHUD();
   for(let i=0;i<5;i++) setTimeout(()=>burst(W*(.2+Math.random()*.6), H*.3, COLORS[i%9].c), i*120);
   const brag = level===2 ? `<p>🏆 你超过了 <b>77%</b> 的织匠！</p>` : "";
-  modal(`<h2>🎉 收拾完啦！</h2><p>😾 黑猫：${catSay}</p>${brag}<p>获得 ⭐ × ${gain+bonus}${level===10?"（Boss 奖励）":""}${bonus?"（零差评 +1）":""}</p><p>📋 完成订单 ${orderDone} 单${orderLost?` · 气走 ${orderLost} 位`:''} · 🪙 +${coinsGot}</p>
+  modal(`<h2>🎉 收拾完啦！</h2><p>😾 黑猫：${catSay}</p>${brag}<p>获得 ⭐ × ${gain+bonus}${level===10?"（Boss 奖励）":""}${bonus?"（零差评 +1）":""}</p><p>📋 完成订单 ${orderDone} 单${orderLost?` · 气走 ${orderLost} 位`:''} · 💰 +${coinsGot}</p>
     <button class="btn blue" id="bDbl">▶ 看视频 · 星星翻倍</button>
     <button class="btn" id="bShop">去线铺修东西 🏠</button>
     ${level<LEVELS.length?`<button class="btn gray" id="bNext">下一关</button>`:`<p>Demo 共 10 关，感谢试玩！</p>`}
@@ -56,7 +56,7 @@ function fakeAd(onReward){
 }
 function adPrompt(text, onReward){
   const prev = state; state="pause";
-  modal(`<h2>🎁 道具用完啦</h2><p>${text}</p><button class="btn blue" id="bAd">▶ 看视频领取</button><button class="btn" id="bCoin">🪙 30 金币买 1 次（有 ${save.coins}）</button><button class="btn gray" id="bNo">算了</button>`);
+  modal(`<h2>🎁 道具用完啦</h2><p>${text}</p><button class="btn blue" id="bAd">▶ 看视频领取</button><button class="btn" id="bCoin">💰 30 金币买 1 次（有 ${save.coins}）</button><button class="btn gray" id="bNo">算了</button>`);
   document.getElementById("bCoin").onclick = ()=>{ if(save.coins<30) return toast("金币不够，多做订单吧"); save.coins-=30; persist(); state=prev; closeModal(); onReward(); updateHUD(); };
   document.getElementById("bAd").onclick = ()=>fakeAd(()=>{ state=prev; onReward(); updateHUD(); });
   document.getElementById("bNo").onclick = ()=>{ state=prev; closeModal(); };

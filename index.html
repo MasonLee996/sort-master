@@ -51,8 +51,7 @@ canvas{display:block;width:100%;flex:1;touch-action:none}
 </head>
 <body>
 <div id="app">
-  <div class="top"><span class="pill" id="lvTxt">第 1 关</span><span class="pill" id="leftTxt">剩 0</span><span class="pill">⭐ <b id="starTxt">0</b> · 🪙 <b id="coinTxt">0</b></span></div>
-  <div id="orders"></div>
+  <div class="top"><span class="pill" id="lvTxt">第 1 关</span><span class="pill" id="leftTxt">剩 0</span><span class="pill">⭐ <b id="starTxt">0</b> · 💰 <b id="coinTxt">0</b></span></div>
   <canvas id="cv"></canvas>
   <div class="bar">
     <div class="tool" id="tShake">🧺<small>抖篮</small><i>1</i></div>
@@ -123,12 +122,17 @@ const TALES = [
   {t:"织机大扫除", s:"织机底下扫出了一整筐零碎。"},
   {t:"黑猫的老巢", s:"终于找到黑猫的窝了，满满一筐偷来的东西！"}
 ];
+// 每种物件的"来由"：客人为什么要它（订单 = 情境里的一个人、一件事）
+const ITEM_WHY = ["想织条围巾","脚冻僵啦","明天要下雪","送给心上人","女儿过生日","孩子哭着要","裁件新衣裳","补渔网用","别在礼服上","赶集要戴"];
+const GUEST_LINES = { urgent:["快点呀…","我赶时间！","还要多久？"], thanks:["太好啦！","就是这个！","谢谢小织匠！"], leave:["算了，不等了！","这家店真慢…","哼，走了！"] };
 const CAT_LINES = {
   start:["喵～这筐是我弄乱的","你收拾不完的喵","嘿嘿，慢慢找吧"],
   danger:["喵嘿嘿，要满咯！","快不行了吧～","再拿错一个试试？"],
   combo:["喵？！","运气好而已喵","哼……"],
   lose:["喵哈哈哈哈！","就这？","明天再来吧喵～"],
-  win:["喵！？不可能！","下次没这么简单！","哼，算你厉害"]
+  win:["喵！？不可能！","下次没这么简单！","哼，算你厉害"],
+  guestGone:["客人被你气跑咯～","喵哈，生意黄了","慢吞吞的织匠喵"],
+  guestDone:["切，运气好","哼，我也会收拾","喵…有两下子"]
 };
 
 /* ---------- 遮挡判定：自由散落，圆形重叠 + 高层压低层 ---------- */
@@ -232,7 +236,7 @@ function layout(){
   const slotH = slotW/SLOT_MAX;
   slotY = H - slotH - 14;
   // 筐（场景主体）：顶部留 70px 给黑猫与对白
-  const top = 70, bot = slotY - 18;
+  const top = COUNTER_H + 6, bot = slotY - 18;
   cell = Math.min(W - 16, (bot - top) * 1.15);          // 筐的宽度
   ox = (W - cell)/2; oy = top;
   BASKET = {x:ox, y:top, w:cell, h:bot-top};
@@ -296,7 +300,7 @@ function drawScene(now){
   ctx.strokeStyle="#7a4c22"; ctx.lineWidth=7; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.stroke();
 }
 function drawCat(now){
-  const x=W-62, y=8+Math.sin(now/400)*2, s=1;
+  const x=W-66, y=COUNTER_H-66+Math.sin(now/400)*2, s=1;   // 黑猫蹲在柜台上
   ctx.save(); ctx.translate(x,y);
   if(catMood==="lose"||catMood==="danger"){ ctx.translate(0,Math.sin(now/60)*2); }
   ctx.fillStyle="#2b2320";
@@ -314,14 +318,11 @@ function drawCat(now){
   // 对白气泡
   if(catSay && now < catSayUntil){
     ctx.font="bold 14px sans-serif"; const tw=ctx.measureText(catSay).width+20;
-    const bx=Math.max(8,x-tw-4), by=14;
+    const bx=Math.max(8,W-tw-8), by=COUNTER_H+4;
     ctx.fillStyle="#fff"; roundRect(bx,by,tw,30,14); ctx.fill(); ctx.strokeStyle="#2b2320"; ctx.lineWidth=2; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(bx+tw-2,by+12); ctx.lineTo(bx+tw+10,by+18); ctx.lineTo(bx+tw-2,by+22); ctx.fillStyle="#fff"; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(W-44,by+2); ctx.lineTo(W-36,by-8); ctx.lineTo(W-28,by+2); ctx.fillStyle="#fff"; ctx.fill();
     ctx.fillStyle="#2b2320"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(catSay,bx+10,by+15);
   }
-  // 关卡标题（左上）
-  ctx.fillStyle="#6b4428"; ctx.font="bold 15px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
-  ctx.fillText("📜 "+TALES[(level-1)%TALES.length].t, 10, 16);
 }
 let catMood="start", catSay="", catSayUntil=0;
 function cat(mood){ catMood=mood; const L=CAT_LINES[mood]; catSay=L[Math.floor(Math.random()*L.length)]; catSayUntil=performance.now()+2200; }
@@ -332,13 +333,17 @@ function lighten(hex,a){ const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&2
 function draw(now){
   ctx.clearRect(0,0,W,H);
   drawScene(now);
+  drawCounter(now);
   let sx=0, sy=0;
   if(shakeT>0){ sx=(Math.random()-.5)*10*shakeT; sy=(Math.random()-.5)*6*shakeT; shakeT=Math.max(0,shakeT-.04); }
   ctx.save(); ctx.translate(sx,sy);
   // 堆叠
-  const alive = tiles.filter(t=>t.alive).sort((a,b)=>a.z-b.z || a.y-b.y);
+  const alive = tiles.filter(t=>t.alive).sort((a,b)=>a.z-b.z || a.y-b.y), WANT = wantedSet();
   for(const t of alive){
     const r = tileRect(t), cov = isCovered(t,tiles);
+    // 客人要的、且现在能拿的：脉动金圈 —— 订单在筐里"看得见"
+    if(WANT[t.color] && !cov){ const pr = r.s*.56 + Math.sin(now/180)*2;
+      ctx.strokeStyle="rgba(242,177,52,.95)"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(r.x+r.s/2, r.y+r.s/2, pr, 0, 7); ctx.stroke(); }
     drawItem(r.x,r.y,r.s,t.color, cov && peekT<=0, t.rot);
   }
   ctx.restore();
@@ -361,6 +366,15 @@ function draw(now){
     const s=f.s0+(f.s1-f.s0)*e; drawItem(x,y,s,f.color,false,f.rot*(1-e));
     if(f.t>=1){ flying.splice(i,1); f.done(); }
   }
+  // 交付：收好的物件飞向客人
+  for(let i=deliverFx.length-1;i>=0;i--){ const d=deliverFx[i], e=(now-d.t0)/450; if(e<0) continue;
+    if(e>=1){ deliverFx.splice(i,1); burst(d.x1,d.y1,COLORS[d.c].c); continue; }
+    const k=1-Math.pow(1-e,2), x=d.x0+(d.x1-d.x0)*k, y=d.y0+(d.y1-d.y0)*k - Math.sin(e*Math.PI)*60;
+    drawItem(x-14,y-14,28*(1-e*.3),d.c,false,e*6); }
+  for(let i=floats.length-1;i>=0;i--){ const f=floats[i], e=(now-f.t0)/1400; if(e>=1){ floats.splice(i,1); continue; }
+    ctx.globalAlpha=1-e; ctx.font="bold 15px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.lineWidth=4; ctx.strokeStyle="#fff"; ctx.strokeText(f.s,Math.min(W-80,Math.max(80,f.x)),f.y+40-e*30);
+    ctx.fillStyle="#c0582a"; ctx.fillText(f.s,Math.min(W-80,Math.max(80,f.x)),f.y+40-e*30); ctx.globalAlpha=1; }
   // 特效粒子
   for(let i=fx.length-1;i>=0;i--){ const p=fx[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=.25; p.life-=.03;
     ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); ctx.globalAlpha=1; if(p.life<=0) fx.splice(i,1); }
@@ -403,7 +417,7 @@ function resolve(){
     let removed=0; const rs=[];
     slot = slot.filter((s,i)=>{ if(s.color==c && removed<3){ removed++; rs.push(slotRect(i)); return false; } return true; });
     rs.forEach(r=>burst(r.x+r.s/2,r.y+r.s/2,COLORS[c].c));
-    deliver(c);
+    deliver(c, rs);
     combo++; SFX.match(combo); vibrate(20); if(combo>=2) cat("combo");
     if(combo>=2) toast(["","","连消 ×2！","手感火热 ×3！","停不下来 ×4！","织神附体 ×"+combo+"！"][Math.min(combo,5)]);
   }}
@@ -445,17 +459,21 @@ function updateHUD(){
 let toastT=0;
 function toast(s){ const el=document.getElementById("toast"); el.textContent=s; el.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("on"),1300); }
 
-/* ---------- 订单（浪漫餐厅式）：顾客排队点单 + 耐心值，三消收好的物件自动交付 ----------
-   设计要点：筐总要清空，所以订单必须带"时效"才有决策 —— 每拿 1 件，所有客人耐心 -1；
-   耐心耗尽客人生气离开（拿不到金币），换下一位。玩家要在"保命清篮"和"先做订单"间取舍。 */
+/* ---------- 订单 v3：客人"站进"场景 ----------
+   客人站在筐上方的柜台前，头顶气泡点单 + 耐心环；收好的物件会真的飞到客人手里；
+   客人会催、会道谢、会摔门走，黑猫会幸灾乐祸。筐里客人要的东西带金圈提示。
+   规则不变：每拿 1 件耐心 -1；交单 → 线篮 +1 格（上限 SLOT_MAX）+ 金币。 */
 const GUESTS = [
   {ico:"👵",n:"奶奶"},{ico:"👧",n:"小花"},{ico:"🧔",n:"木匠"},{ico:"👩‍🍳",n:"厨娘"},
   {ico:"🧙",n:"斗篷客"},{ico:"👮",n:"巡警"},{ico:"👴",n:"老邮差"}
 ];
-let orders = [], orderDone = 0, orderLost = 0, coinsGot = 0, guestIdx = 0;
+let orders = [], orderDone = 0, orderLost = 0, coinsGot = 0, guestIdx = 0, deliverFx = [];
+const SEATS = ()=> level===1 ? 1 : 2;
+const pick1 = a => a[Math.floor(Math.random()*a.length)];
 
 function remainCount(){ const h={}; tiles.forEach(t=>{ if(t.alive) h[t.color]=(h[t.color]||0)+1; }); slot.forEach(s=>h[s.color]=(h[s.color]||0)+1); return h; }
-function newOrder(){
+function guestSay(o, txt, ms){ o.say = txt; o.sayUntil = performance.now() + (ms||1800); }
+function newOrder(seat){
   const have = remainCount(), busyC = new Set(orders.filter(o=>!o.done&&!o.gone).flatMap(o=>o.need.map(x=>x.c)));
   const cols = Object.keys(have).map(Number).filter(c=>have[c]>=3 && !busyC.has(c)).sort(()=>Math.random()-.5);
   if(!cols.length) return null;
@@ -464,54 +482,142 @@ function newOrder(){
   const sets = need.reduce((s,x)=>s+x.want,0);
   const g = GUESTS[guestIdx++ % GUESTS.length];
   const pat = Math.round(sets*11 + 8 - Math.min(4, level*.4));  // 耐心 = 拿取次数（sim3 调参：11/8）
-  return {g, need, done:false, gone:false, pat, max:pat, reward: 8 + sets*10};
+  const o = {g, need, seat, done:false, gone:false, pat, max:pat, reward: 8 + sets*10,
+             enter: performance.now(), leaveAt: 0, bump: 0, urged:false, say:"", sayUntil:0};
+  guestSay(o, ITEM_WHY[need[0].c] + "，要" + ITEMS[need[0].c] + "！", 2600);
+  return o;
 }
+function freeSeat(){ const used = new Set(orders.map(o=>o.seat)); for(let i=0;i<SEATS();i++) if(!used.has(i)) return i; return -1; }
 function makeOrders(){
-  orders=[]; orderDone=0; orderLost=0; coinsGot=0; guestIdx=level*2;
-  const n = level===1 ? 1 : 2;
-  for(let i=0;i<n;i++){ const o=newOrder(); if(o) orders.push(o); }
+  orders=[]; deliverFx=[]; orderDone=0; orderLost=0; coinsGot=0; guestIdx=level*2;
+  for(let i=0;i<SEATS();i++){ const o=newOrder(i); if(o) orders.push(o); }
 }
 function refillOrders(){
   orders = orders.filter(o=>!o.done && !o.gone);
-  const n = level===1 ? 1 : 2;
-  while(orders.length < n){ const o=newOrder(); if(!o) break; orders.push(o); }
-  renderOrders();
+  let s; while((s=freeSeat())>=0){ const o=newOrder(s); if(!o) break; orders.push(o); }
 }
-// 每拿一件：耐心 -1
+function renderOrders(){}   // 兼容旧调用：订单已改为画布内绘制
+
+// 客人想要、且还没凑齐的物件颜色（用于筐内金圈提示）
+function wantedSet(){ const w={}; orders.forEach(o=>{ if(!o.done&&!o.gone) o.need.forEach(x=>{ if(x.got<x.want) w[x.c]=1; }); }); return w; }
+
+// 每拿一件：耐心 -1；快没耐心时催一句；耗尽就摔门走
 function tickOrders(){
   let changed=false;
-  for(const o of orders){ if(o.done||o.gone) continue; o.pat--; if(o.pat<=0){ o.gone=true; orderLost++; changed=true; toast(o.g.ico+" "+o.g.n+"等不及走了…"); beep(220,.25,"triangle",.1,150); } }
-  renderOrders(); if(changed) setTimeout(refillOrders,700);
+  for(const o of orders){
+    if(o.done||o.gone) continue;
+    o.pat--;
+    if(!o.urged && o.pat/o.max <= .3){ o.urged=true; guestSay(o, pick1(GUEST_LINES.urgent), 1600); beep(330,.1,"square",.06); }
+    if(o.pat<=0){
+      o.gone=true; o.leaveAt=performance.now(); orderLost++; changed=true;
+      guestSay(o, pick1(GUEST_LINES.leave), 1400); cat("guestGone");
+      beep(220,.25,"triangle",.1,150); vibrate(40);
+    }
+  }
+  if(changed) setTimeout(refillOrders,1000);
 }
-// 三消时：交给需要它的客人
-function deliver(c){
+// 三消时：物件真的飞到客人手里
+function deliver(c, fromRects){
   for(const o of orders){
     if(o.done||o.gone) continue;
     const n = o.need.find(x=>x.c==c && x.got<x.want); if(!n) continue;
-    n.got++; beep(1046,.12,"triangle",.14);
+    n.got++; o.bump = performance.now()+300;
+    const G = guestPos(o), now = performance.now();
+    (fromRects||[]).forEach((r,k)=>deliverFx.push({x0:r.x+r.s/2, y0:r.y+r.s/2, x1:G.x, y1:G.y, c, t0: now + k*70, o}));
     if(o.need.every(x=>x.got>=x.want)){
-      o.done=true; orderDone++; coinsGot+=o.reward;
-      [784,988,1318].forEach((f,k)=>setTimeout(()=>beep(f,.16,"triangle",.16),k*80));
-      vibrate([15,30,15]);
-      // 局内回报：每完成一单，线篮 +1 格（上限 SLOT_MAX）—— 让"做订单"从陷阱变成保命投资
-      if(slotCap < SLOT_MAX){ slotCap++; slotFlash = performance.now()+1200; toast(o.g.ico+" "+o.g.n+"送你一格篮子！🧺+1 · 🪙+"+o.reward); }
-      else toast(o.g.ico+" "+o.g.n+"：太谢谢啦！ 🪙+"+o.reward);
-      setTimeout(refillOrders,700);
-    }
-    renderOrders(o); return true;
+      o.done=true; o.leaveAt=now+450; orderDone++; coinsGot+=o.reward;
+      const grow = slotCap < SLOT_MAX; if(grow) slotCap++;
+      setTimeout(()=>{
+        guestSay(o, pick1(GUEST_LINES.thanks), 1400);
+        [784,988,1318].forEach((f,k)=>setTimeout(()=>beep(f,.16,"triangle",.16),k*80));
+        vibrate([15,30,15]);
+        // 局内回报：每完成一单，线篮 +1 格（上限 SLOT_MAX）—— 让"做订单"从陷阱变成保命投资
+        let gift = "";
+        if(grow){ slotFlash = performance.now()+1400; gift = "  🧺 篮子+1格"; }
+        floatTxt(G.x, G.y-30, "💰+"+o.reward + gift);
+        if(Math.random()<.5) cat("guestDone");
+      }, 420);
+      setTimeout(refillOrders,1300);
+    } else beep(1046,.12,"triangle",.14);
+    return true;
   }
   return false;
 }
-function renderOrders(hit){
-  const el=document.getElementById("orders"); if(!el) return;
-  el.innerHTML = orders.map(o=>{
-    const p = Math.max(0,o.pat/o.max), col = p>.5?"#5fae6a":p>.25?"#f2b134":"#e85d5d";
-    const face = o.done?"😊":o.gone?"😤":p<=.25?"😠":o.g.ico;
-    return `<div class="ord${o.done?" done":""}${o.gone?" gone":""}${o===hit?" hit":""}">
-      <span class="gst">${face}</span>
-      <span class="body"><span class="need">${o.need.map(x=>`<span class="it">${ITEMS[x.c]}<b>${Math.min(x.got,x.want)*3}/${x.want*3}</b></span>`).join("")}</span>
-      <span class="pat"><i style="width:${p*100}%;background:${col}"></i></span></span>
-      <span class="rw">${o.done?"✅":o.gone?"❌":"🪙"+o.reward}</span></div>`; }).join("") || `<div class="ord done"><span class="gst">🌙</span><span class="body">今天没有客人了</span></div>`;
+let floats=[];
+function floatTxt(x,y,s){ floats.push({x,y,s,t0:performance.now()}); }
+
+/* ---------- 柜台 + 客人绘制（画布顶部 COUNTER_H 区域） ---------- */
+const COUNTER_H = 118;
+function guestPos(o){
+  // 区间 [48, W-78]：左边是门，右边是黑猫；每个座位 = 客人头像 + 右侧需求牌
+  const n = SEATS(), L = 48, span = (W - 78 - L)/n;
+  return {x: L + span*o.seat + 30, y: 62};
+}
+function drawCounter(now){
+  // 墙 + 柜台台面
+  const wg = ctx.createLinearGradient(0,0,0,COUNTER_H); wg.addColorStop(0,"#f3e2c7"); wg.addColorStop(1,"#e8d0ad");
+  ctx.fillStyle = wg; ctx.fillRect(0,0,W,COUNTER_H);
+  ctx.fillStyle = "#b07a46"; ctx.fillRect(0,COUNTER_H-22,W,22);
+  ctx.fillStyle = "#8a5a2c"; ctx.fillRect(0,COUNTER_H-6,W,6);
+  ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(0,COUNTER_H-22,W,3);
+  // 门（客人从这里进出）
+  ctx.fillStyle="#9c6b3d"; roundRect(8,8,34,COUNTER_H-30,6); ctx.fill();
+  ctx.fillStyle="#f2b134"; ctx.beginPath(); ctx.arc(36,COUNTER_H/2-4,2.5,0,7); ctx.fill();
+  for(const o of orders) drawGuest(o, now);
+}
+function drawGuest(o, now){
+  const G = guestPos(o), p = Math.max(0, o.pat/o.max);
+  // 入场：从门口走进来；离场：完成=开心跳走，气走=抖一下后走
+  let x = G.x, y = G.y, alpha = 1;
+  const ein = Math.min(1, (now - o.enter)/500); x = 30 + (G.x-30)*(1-Math.pow(1-ein,3));
+  if((o.done||o.gone) && o.leaveAt && now > o.leaveAt){
+    const e = Math.min(1,(now-o.leaveAt)/700); alpha = 1-e;
+    if(o.done) y -= e*30; else x += Math.sin(now/30)*4*(1-e) - e*40;
+  }
+  if(alpha<=0) return;
+  const angry = !o.done && !o.gone && p<=.3, bounce = Math.max(0, o.bump-now)/300;
+  ctx.save(); ctx.globalAlpha = alpha;
+  if(angry) x += Math.sin(now/45)*2;
+  // 耐心环
+  const R = 25;
+  ctx.lineWidth = 5; ctx.strokeStyle="rgba(120,90,60,.2)"; ctx.beginPath(); ctx.arc(x,y,R,0,7); ctx.stroke();
+  if(!o.done && !o.gone){
+    ctx.strokeStyle = p>.5?"#5fae6a":p>.3?"#f2b134":"#e85d5d";
+    ctx.beginPath(); ctx.arc(x,y,R,-Math.PI/2,-Math.PI/2+Math.PI*2*p); ctx.stroke();
+  }
+  ctx.fillStyle = o.done?"#e6f4e2":o.gone?"#f6dede":"#fff8ee"; ctx.beginPath(); ctx.arc(x,y,R-3,0,7); ctx.fill();
+  const face = o.done?"😊":o.gone?"😤":angry?"😠":o.g.ico;
+  ctx.font = `${Math.round(30*(1+bounce*.25))}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(face, x, y+2);
+  ctx.font="bold 11px sans-serif"; ctx.fillStyle="#6b4428"; ctx.fillText(o.g.n, x, y+R+9);
+  // 需求牌：物件 + 进度（挂在客人左侧）
+  if(!o.gone){
+    const items = o.need, bw = 34*items.length+8, bx = x + R + 4, by = y-20;
+    ctx.fillStyle = o.done?"#e6f4e2":"#fff"; roundRect(bx,by,bw,40,10); ctx.fill();
+    ctx.strokeStyle = angry?"#e85d5d":"#d8bf9c"; ctx.lineWidth=2; ctx.stroke();
+    items.forEach((it,k)=>{
+      const ix = bx+4+k*34;
+      drawItem(ix, by+3, 24, it.c, false, 0);
+      const ok = it.got>=it.want;
+      ctx.font="bold 11px sans-serif"; ctx.fillStyle= ok?"#3d8549":"#8a6a50"; ctx.textAlign="left";
+      ctx.textAlign="center"; ctx.fillText(ok?"✓":(it.got*3)+"/"+(it.want*3), ix+15, by+33);
+    });
+    if(!o.done){ const cx0 = bx+bw/2-10, cy0 = by-8;            // 画布自绘金币（不依赖 💰 字形）
+      ctx.fillStyle="#f2b134"; ctx.beginPath(); ctx.arc(cx0,cy0,5,0,7); ctx.fill(); ctx.strokeStyle="#c4861a"; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.font="bold 11px sans-serif"; ctx.fillStyle="#c0812a"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(o.reward, cx0+8, cy0+1); }
+  }
+  // 对白气泡（在客人上方）
+  if(o.say && now < o.sayUntil){
+    // 气泡限定在本座位区间内，字太长就缩字号 —— 两位客人的气泡不会互相压
+    const n = SEATS(), L = 46, span = (W - 78 - L)/n, sL = L + span*o.seat, sR = sL + span - 4;
+    let fs = 12; ctx.font="bold "+fs+"px sans-serif"; let tw = ctx.measureText(o.say).width+16;
+    while(tw > sR-sL && fs > 9){ fs--; ctx.font="bold "+fs+"px sans-serif"; tw = ctx.measureText(o.say).width+14; }
+    const bx = Math.max(sL, Math.min(sR-tw, x-tw/2)), by = 2;
+    ctx.fillStyle = o.gone?"#ffe3e3":"#fff"; roundRect(bx,by,tw,22,11); ctx.fill();
+    ctx.strokeStyle="#6b4428"; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle="#4a3426"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(o.say, bx+tw/2, by+11);
+  }
+  ctx.restore();
 }
 
 /* ---------- 流程：开局 / 胜 / 负 / 复活 / 广告占位 ---------- */
@@ -526,7 +632,7 @@ function startLevel(lv){
   layout(); makeOrders(); renderOrders(); updateHUD(); closeModal();
   const T = TALES[(lv-1)%TALES.length];
   state="pause";
-  modal(`<h2>📜 ${T.t}</h2><p>${T.s}</p>${lv===1?'<p style="font-size:13px">点最上面的东西放进篮子，<b>3 个一样的</b>就收好了。<br>篮子 7 格，<b>装满就输</b>。</p>':''}<div class="story">📋 今日客人：${orders.map(o=>o.g.ico+' '+o.g.n+' 要 '+o.need.map(x=>ITEMS[x.c]+'×'+(x.want*3)).join(' ')).join('<br>')}<br><small>⏳ 每拿一件，客人耐心就少一点。<b>交一单 = 篮子 +1 格</b>（最多 9 格）+ 金币！</small></div><button class="btn" id="bGo">${lv===2?"⚠️ 我偏要试试":"开始收拾"}</button>`);
+  modal(`<h2>📜 ${T.t}</h2><p>${T.s}</p>${lv===1?'<p style="font-size:13px">点最上面的东西放进篮子，<b>3 个一样的</b>就收好了。<br>篮子 7 格，<b>装满就输</b>。</p>':''}<div class="story">🔔 叮铃——${orders.map(o=>o.g.ico+' <b>'+o.g.n+'</b>：「'+ITEM_WHY[o.need[0].c]+'，要 '+o.need.map(x=>ITEMS[x.c]+'×'+(x.want*3)).join(' ')+'」').join('<br>')}<br><small>⏳ 每拿一件客人就更急一点；筐里<b style="color:#d99a1a">金圈</b>是客人要的。<b>交一单 = 篮子 +1 格</b>（最多 9 格）+ 金币！</small></div><button class="btn" id="bGo">${lv===2?"⚠️ 我偏要试试":"开始收拾"}</button>`);
   document.getElementById("bGo").onclick = ()=>{ closeModal(); state="play"; cat("start"); };
 }
 
@@ -554,7 +660,7 @@ function win(){
   persist(); updateHUD();
   for(let i=0;i<5;i++) setTimeout(()=>burst(W*(.2+Math.random()*.6), H*.3, COLORS[i%9].c), i*120);
   const brag = level===2 ? `<p>🏆 你超过了 <b>77%</b> 的织匠！</p>` : "";
-  modal(`<h2>🎉 收拾完啦！</h2><p>😾 黑猫：${catSay}</p>${brag}<p>获得 ⭐ × ${gain+bonus}${level===10?"（Boss 奖励）":""}${bonus?"（零差评 +1）":""}</p><p>📋 完成订单 ${orderDone} 单${orderLost?` · 气走 ${orderLost} 位`:''} · 🪙 +${coinsGot}</p>
+  modal(`<h2>🎉 收拾完啦！</h2><p>😾 黑猫：${catSay}</p>${brag}<p>获得 ⭐ × ${gain+bonus}${level===10?"（Boss 奖励）":""}${bonus?"（零差评 +1）":""}</p><p>📋 完成订单 ${orderDone} 单${orderLost?` · 气走 ${orderLost} 位`:''} · 💰 +${coinsGot}</p>
     <button class="btn blue" id="bDbl">▶ 看视频 · 星星翻倍</button>
     <button class="btn" id="bShop">去线铺修东西 🏠</button>
     ${level<LEVELS.length?`<button class="btn gray" id="bNext">下一关</button>`:`<p>Demo 共 10 关，感谢试玩！</p>`}
@@ -572,7 +678,7 @@ function fakeAd(onReward){
 }
 function adPrompt(text, onReward){
   const prev = state; state="pause";
-  modal(`<h2>🎁 道具用完啦</h2><p>${text}</p><button class="btn blue" id="bAd">▶ 看视频领取</button><button class="btn" id="bCoin">🪙 30 金币买 1 次（有 ${save.coins}）</button><button class="btn gray" id="bNo">算了</button>`);
+  modal(`<h2>🎁 道具用完啦</h2><p>${text}</p><button class="btn blue" id="bAd">▶ 看视频领取</button><button class="btn" id="bCoin">💰 30 金币买 1 次（有 ${save.coins}）</button><button class="btn gray" id="bNo">算了</button>`);
   document.getElementById("bCoin").onclick = ()=>{ if(save.coins<30) return toast("金币不够，多做订单吧"); save.coins-=30; persist(); state=prev; closeModal(); onReward(); updateHUD(); };
   document.getElementById("bAd").onclick = ()=>fakeAd(()=>{ state=prev; onReward(); updateHUD(); });
   document.getElementById("bNo").onclick = ()=>{ state=prev; closeModal(); };
