@@ -2,16 +2,27 @@
    客人站在筐上方的柜台前，头顶气泡点单 + 耐心环；收好的物件会真的飞到客人手里；
    客人会催、会道谢、会摔门走，黑猫会幸灾乐祸。筐里客人要的东西带金圈提示。
    规则不变：每拿 1 件耐心 -1；交单 → 线篮 +1 格（上限 SLOT_MAX）+ 金币。 */
+// 普通客人（循环出场）
 const GUESTS = [
   {ico:"👵",n:"奶奶"},{ico:"👧",n:"小花"},{ico:"🧔",n:"木匠"},{ico:"👩‍🍳",n:"厨娘"},
-  {ico:"🧙",n:"斗篷客"},{ico:"👮",n:"巡警"},{ico:"👴",n:"老邮差"}
+  {ico:"👮",n:"巡警"},{ico:"👴",n:"老邮差"}
 ];
+// 特殊客人：VIP（斗篷客，重赏短耐心）/ 黑猫假扮（陷阱，喂它就偷格子）
+const VIP_GUEST = {ico:"🧙",n:"斗篷客",kind:"vip"};
+const CAT_GUEST  = {ico:"😼",n:"神秘客",kind:"imposter"};
+const IMPOSTOR_SAY = ["喵（咳）…我是来买东西的！","快给我，别问那么多","嘻…这颜色归我了","别老盯着我的尾巴看"];
 let orders = [], orderDone = 0, orderLost = 0, coinsGot = 0, guestIdx = 0, deliverFx = [];
 const SEATS = ()=> level===1 ? 1 : 2;
 const pick1 = a => a[Math.floor(Math.random()*a.length)];
 
 function remainCount(){ const h={}; tiles.forEach(t=>{ if(t.alive) h[t.color]=(h[t.color]||0)+1; }); slot.forEach(s=>h[s.color]=(h[s.color]||0)+1); return h; }
 function guestSay(o, txt, ms){ o.say = txt; o.sayUntil = performance.now() + (ms||1800); }
+// 特殊客人是"风险/收益"旋钮：VIP 给高价值短耐心，黑猫假扮是陷阱
+function rollKind(){
+  if(level>=4 && Math.random()<0.18) return "imposter";
+  if(level>=3 && Math.random()<0.28) return "vip";
+  return "normal";
+}
 function newOrder(seat){
   const have = remainCount(), busyC = new Set(orders.filter(o=>!o.done&&!o.gone).flatMap(o=>o.need.map(x=>x.c)));
   const cols = Object.keys(have).map(Number).filter(c=>have[c]>=3 && !busyC.has(c)).sort(()=>Math.random()-.5);
@@ -19,11 +30,14 @@ function newOrder(seat){
   const kinds = level<=2 ? 1 : (Math.random()<.45 && cols.length>1 ? 2 : 1);
   const need = cols.slice(0,kinds).map(c=>({c, want: Math.min(Math.floor(have[c]/3), Math.random()<.3?2:1), got:0}));
   const sets = need.reduce((s,x)=>s+x.want,0);
-  const g = GUESTS[guestIdx++ % GUESTS.length];
-  const pat = Math.round(sets*11 + 8 - Math.min(4, level*.4));  // 耐心 = 拿取次数（sim3 调参：11/8）
-  const o = {g, need, seat, done:false, gone:false, pat, max:pat, reward: 8 + sets*10,
+  const kind = rollKind();
+  const g = kind==="vip" ? VIP_GUEST : kind==="imposter" ? CAT_GUEST : GUESTS[guestIdx++ % GUESTS.length];
+  let pat = Math.round(sets*11 + 8 - Math.min(4, level*.4));   // 耐心 = 拿取次数（sim3 调参：11/8）
+  let reward = 8 + sets*10;
+  if(g.kind==="vip"){ pat = Math.max(4, Math.round(pat*0.5)); reward = reward*3; }   // VIP：赏金×3、耐心减半
+  const o = {g, kind:g.kind, need, seat, done:false, gone:false, pat, max:pat, reward,
              enter: performance.now(), leaveAt: 0, bump: 0, urged:false, say:"", sayUntil:0};
-  guestSay(o, ITEM_WHY[need[0].c] + "，要" + ITEMS[need[0].c] + "！", 2600);
+  guestSay(o, g.kind==="imposter" ? pick1(IMPOSTOR_SAY) : ITEM_WHY[need[0].c] + "，要" + ITEMS[need[0].c] + "！", 2600);
   return o;
 }
 function freeSeat(){ const used = new Set(orders.map(o=>o.seat)); for(let i=0;i<SEATS();i++) if(!used.has(i)) return i; return -1; }
@@ -64,7 +78,9 @@ function deliver(c, fromRects){
     const G = guestPos(o), now = performance.now();
     (fromRects||[]).forEach((r,k)=>deliverFx.push({x0:r.x+r.s/2, y0:r.y+r.s/2, x1:G.x, y1:G.y, c, t0: now + k*70, o}));
     if(o.need.every(x=>x.got>=x.want)){
-      o.done=true; o.leaveAt=now+450; orderDone++; coinsGot+=o.reward;
+      o.done=true; o.leaveAt=now+450; orderDone++;
+      if(o.kind==="imposter"){ imposterReveal(o); setTimeout(refillOrders,1300); return true; }   // 黑猫假扮：喂它就是上当
+      coinsGot+=o.reward;
       const grow = slotCap < SLOT_MAX; if(grow) slotCap++;
       setTimeout(()=>{
         guestSay(o, pick1(GUEST_LINES.thanks), 1400);
@@ -73,7 +89,7 @@ function deliver(c, fromRects){
         // 局内回报：每完成一单，线篮 +1 格（上限 SLOT_MAX）—— 让"做订单"从陷阱变成保命投资
         let gift = "";
         if(grow){ slotFlash = performance.now()+1400; gift = "  🧺 篮子+1格"; }
-        floatTxt(G.x, G.y-30, "💰+"+o.reward + gift);
+        floatTxt(G.x, G.y-30, "💰+"+o.reward + (o.kind==="vip"?" ×3":"") + gift);
         if(Math.random()<.5) cat("guestDone");
       }, 420);
       setTimeout(refillOrders,1300);
@@ -81,6 +97,16 @@ function deliver(c, fromRects){
     return true;
   }
   return false;
+}
+// 黑猫假扮客人被"喂"了：现原形，偷走 1 格篮子（下限 SLOT_N），并嘲讽
+function imposterReveal(o){
+  const G = guestPos(o), stole = slotCap > SLOT_N;
+  if(stole) slotCap = Math.max(SLOT_N, slotCap-1);
+  cat("imposter");
+  beep(160,.3,"sawtooth",.12,300);
+  floatTxt(G.x, G.y-30, "😼 喵哈哈！");
+  shakeT = Math.max(shakeT, .6);
+  toast("😼 黑猫现原形！" + (stole ? "偷走了 1 格篮子！" : "（篮子已最小）"));
 }
 let floats=[];
 function floatTxt(x,y,s){ floats.push({x,y,s,t0:performance.now()}); }
@@ -121,19 +147,22 @@ function drawGuest(o, now){
   const R = 25;
   ctx.lineWidth = 5; ctx.strokeStyle="rgba(120,90,60,.2)"; ctx.beginPath(); ctx.arc(x,y,R,0,7); ctx.stroke();
   if(!o.done && !o.gone){
-    ctx.strokeStyle = p>.5?"#5fae6a":p>.3?"#f2b134":"#e85d5d";
+    ctx.strokeStyle = o.kind==="vip" ? "#e0a93a" : p>.5?"#5fae6a":p>.3?"#f2b134":"#e85d5d";
     ctx.beginPath(); ctx.arc(x,y,R,-Math.PI/2,-Math.PI/2+Math.PI*2*p); ctx.stroke();
   }
+  if(o.kind==="vip"){ ctx.fillStyle="rgba(224,169,58,.18)"; ctx.beginPath(); ctx.arc(x,y,R+5,0,7); ctx.fill(); }  // VIP 金光
   ctx.fillStyle = o.done?"#e6f4e2":o.gone?"#f6dede":"#fff8ee"; ctx.beginPath(); ctx.arc(x,y,R-3,0,7); ctx.fill();
   const face = o.done?"😊":o.gone?"😤":angry?"😠":o.g.ico;
   ctx.font = `${Math.round(30*(1+bounce*.25))}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
   ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(face, x, y+2);
   ctx.font="bold 11px sans-serif"; ctx.fillStyle="#6b4428"; ctx.fillText(o.g.n, x, y+R+9);
+  if(o.kind==="vip"){ ctx.font="20px sans-serif"; ctx.fillText("👑", x, y-R-13); }   // VIP 皇冠
   // 需求牌：物件 + 进度（挂在客人左侧）
   if(!o.gone){
     const items = o.need, bw = 34*items.length+8, bx = x + R + 4, by = y-20;
     ctx.fillStyle = o.done?"#e6f4e2":"#fff"; roundRect(bx,by,bw,40,10); ctx.fill();
-    ctx.strokeStyle = angry?"#e85d5d":"#d8bf9c"; ctx.lineWidth=2; ctx.stroke();
+    if(o.kind==="imposter"){ ctx.setLineDash([4,3]); ctx.strokeStyle="#c0392b"; ctx.lineWidth=2; ctx.stroke(); ctx.setLineDash([]); }
+    else { ctx.strokeStyle = angry?"#e85d5d":"#d8bf9c"; ctx.lineWidth=2; ctx.stroke(); }
     items.forEach((it,k)=>{
       const ix = bx+4+k*34;
       drawItem(ix, by+3, 24, it.c, false, 0);
@@ -142,8 +171,9 @@ function drawGuest(o, now){
       ctx.textAlign="center"; ctx.fillText(ok?"✓":(it.got*3)+"/"+(it.want*3), ix+15, by+33);
     });
     if(!o.done){ const cx0 = bx+bw/2-10, cy0 = by-8;            // 画布自绘金币（不依赖 💰 字形）
-      ctx.fillStyle="#f2b134"; ctx.beginPath(); ctx.arc(cx0,cy0,5,0,7); ctx.fill(); ctx.strokeStyle="#c4861a"; ctx.lineWidth=1.5; ctx.stroke();
-      ctx.font="bold 11px sans-serif"; ctx.fillStyle="#c0812a"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(o.reward, cx0+8, cy0+1); }
+      if(o.kind==="imposter"){ ctx.fillStyle="#c0392b"; ctx.beginPath(); ctx.arc(cx0,cy0,6,0,7); ctx.fill(); ctx.fillStyle="#fff"; ctx.font="bold 13px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("?",cx0,cy0+1); }
+      else { ctx.fillStyle="#f2b134"; ctx.beginPath(); ctx.arc(cx0,cy0,5,0,7); ctx.fill(); ctx.strokeStyle="#c4861a"; ctx.lineWidth=1.5; ctx.stroke();
+        ctx.font="bold 11px sans-serif"; ctx.fillStyle="#c0812a"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(o.reward, cx0+8, cy0+1); } }
   }
   // 对白气泡（在客人上方）
   if(o.say && now < o.sayUntil){

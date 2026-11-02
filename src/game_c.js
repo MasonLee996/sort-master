@@ -9,8 +9,12 @@ function startLevel(lv){
   tools = {shake:1, back:1, peek:1}; state="play";
   layout(); makeOrders(); renderOrders(); updateHUD(); closeModal();
   const T = TALES[(lv-1)%TALES.length];
+  const hasVip = orders.some(o=>o.kind==="vip"), hasImp = orders.some(o=>o.kind==="imposter");
+  const special = hasVip&&hasImp ? "🧙 斗篷客是贵客：赏金×3、耐心短，值得抢！😼 神秘客是黑猫假扮——别喂它，会偷 1 格篮子！"
+    : hasVip ? "🧙 斗篷客是贵客：赏金×3、耐心短，值得抢！"
+    : hasImp ? "😼 神秘客是黑猫假扮的——喂它订单会被偷走 1 格篮子，别上当！" : "";
   state="pause";
-  modal(`<h2>📜 ${T.t}</h2><p>${T.s}</p>${lv===1?'<p style="font-size:13px">点最上面的东西放进篮子，<b>3 个一样的</b>就收好了。<br>篮子 7 格，<b>装满就输</b>。</p>':''}<div class="story">🔔 叮铃——${orders.map(o=>o.g.ico+' <b>'+o.g.n+'</b>：「'+ITEM_WHY[o.need[0].c]+'，要 '+o.need.map(x=>ITEMS[x.c]+'×'+(x.want*3)).join(' ')+'」').join('<br>')}<br><small>⏳ 每拿一件客人就更急一点；筐里<b style="color:#d99a1a">金圈</b>是客人要的。<b>交一单 = 篮子 +1 格</b>（最多 9 格）+ 金币！</small></div><button class="btn" id="bGo">${lv===2?"⚠️ 我偏要试试":"开始收拾"}</button>`);
+  modal(`<h2>📜 ${T.t}</h2><p>${T.s}</p>${lv===1?'<p style="font-size:13px">点最上面的东西放进篮子，<b>3 个一样的</b>就收好了。<br>篮子 7 格，<b>装满就输</b>。</p>':''}<div class="story">🔔 叮铃——${orders.map(o=>o.g.ico+' <b>'+o.g.n+'</b>：「'+ITEM_WHY[o.need[0].c]+'，要 '+o.need.map(x=>ITEMS[x.c]+'×'+(x.want*3)).join(' ')+'」').join('<br>')}<br><small>⏳ 每拿一件客人就更急一点；筐里<b style="color:#d99a1a">金圈</b>是客人要的。<b>交一单 = 篮子 +1 格</b>（最多 9 格）+ 金币！</small>${special?`<br><small style="color:#b8860b">${special}</small>`:''}</div><button class="btn" id="bGo">${lv===2?"⚠️ 我偏要试试":"开始收拾"}</button>`);
   document.getElementById("bGo").onclick = ()=>{ closeModal(); state="play"; cat("start"); };
 }
 
