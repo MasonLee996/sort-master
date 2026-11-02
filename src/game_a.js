@@ -162,6 +162,23 @@ function drawScene(now){
   ctx.strokeStyle="rgba(255,220,160,.45)"; ctx.lineWidth=6; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.stroke();
   ctx.strokeStyle="#6e4020"; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(cx,cy,rx*.9,ry*.9,0,0,7); ctx.stroke();
 }
+/* 前筐沿：画在物件之后，把堆底物件"收进"筐里 —— 筐是容器而不是垫在底下的盘子 */
+function drawBasketFront(){
+  const B=BASKET, cx=B.x+B.w/2, cy=B.y+B.h*.5, rx=B.w*.54, ry=B.h*.5;
+  const fy = cy + ry*0.30;                                  // 前沿只盖住底部空弧，物件主体留在筐口
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.clip();
+  const g = ctx.createLinearGradient(0,fy-8,0,cy+ry);
+  g.addColorStop(0,"#c08a4e"); g.addColorStop(.5,"#9a6430"); g.addColorStop(1,"#663c1c");
+  ctx.fillStyle=g; ctx.fillRect(cx-rx-4, fy-8, rx*2+8, ry+8);
+  ctx.strokeStyle="rgba(80,45,18,.35)"; ctx.lineWidth=3;
+  for(let k=1;k<=3;k++){ ctx.beginPath(); ctx.ellipse(cx,cy,rx*(1-k*.07),ry*(1-k*.07),0,Math.PI*.12,Math.PI*.88); ctx.stroke(); }
+  ctx.restore();
+  ctx.strokeStyle="rgba(255,225,170,.55)"; ctx.lineWidth=6;  // 前唇高光
+  ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,Math.PI*.16,Math.PI*.84); ctx.stroke();
+  ctx.strokeStyle="rgba(105,60,28,.85)"; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,Math.PI*.14,Math.PI*.86); ctx.stroke();
+}
 function drawCat(now){
   // 黑猫蹲在柜台右侧（贴图立绘，底部沉入台面；回退矢量猫）
   const bob = Math.sin(now/400)*2, shiver = (catMood==="lose"||catMood==="danger") ? Math.sin(now/60)*2 : 0;

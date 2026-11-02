@@ -30,6 +30,7 @@ function draw(now){
     drawItem(r.x,r.y,r.s,t.color, cov && peekT<=0, t.rot);
   }
   ctx.restore();
+  drawBasketFront();                                        // 前筐沿盖住堆底物件（筐=容器）
   // 线篮
   const danger = slot.length >= slotCap-2;
   const s0 = slotRect(0);
