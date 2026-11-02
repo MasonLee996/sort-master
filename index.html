@@ -455,14 +455,15 @@ cv.addEventListener("pointerdown", e=>{
   if(state!=="play" || busy) return;
   const b=cv.getBoundingClientRect(), x=e.clientX-b.left, y=e.clientY-b.top;
   const cand = tiles.filter(t=>t.alive).sort((a,b)=>b.z-a.z);
+  let blocked=null;
   for(const t of cand){
-    const r=tileRect(t);
+    const r=tileRect(t), rad=r.s*.55;                // 命中半径对齐视觉（贴图 d=1.16s，内容占 88%）
     const dx=x-(r.x+r.s/2), dy=y-(r.y+r.s/2);
-    if(dx*dx+dy*dy <= (r.s*.5)*(r.s*.5)){
-      if(isCovered(t,tiles)){ toast("被压住了，先拿上面的"); cat("start"); beep(180,.08,"square",.05); return; }
-      pick(t,r); return;
-    }
+    if(dx*dx+dy*dy > rad*rad) continue;
+    if(isCovered(t,tiles)){ blocked=t; continue; }   // 被压住：先跳过，同点位可能有看得见、能拿的
+    pick(t,r); return;
   }
+  if(blocked){ toast("被压住了，先拿上面的"); cat("start"); beep(180,.08,"square",.05); }
 });
 function pick(t,r){
   if(slot.length + flying.length >= slotCap) return;
