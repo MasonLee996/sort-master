@@ -37,7 +37,7 @@ function layout(){
   slotY = H - slotH - 12;
   // 柜台线：屏高 40%（效果图中立绘+柜台占上 1/3 强）
   COUNTER_H = Math.max(230, Math.min(330, Math.round(H*0.40)));
-  const top = COUNTER_H + counterFaceH() + 2, bot = slotY - 12;   // 筐沿直接贴住柜台前脸，不留空档
+  const top = COUNTER_H + counterFaceH() - 6, bot = slotY - 20;   // 物件堆从柜台前脸下沿铺到搁板
   cell = W - 6;                                          // 筐满宽（效果图：物件顶到两边）
   ox = (W-cell)/2; oy = top;
   BASKET = {x:ox, y:top, w:cell, h:bot-top};
@@ -46,7 +46,7 @@ let BASKET = {x:0,y:0,w:1,h:1};
 window.addEventListener("resize", layout);
 
 function tileRect(t){
-  const s = t.r*2*BASKET.w;
+  const s = t.r*2*BASKET.w*1.15;                    // 物件放大一档（与遮挡判定差异小，不会"看着压着却能点"）
   return {x:BASKET.x + t.x*BASKET.w - s/2, y:BASKET.y + t.y*BASKET.h - s/2 - t.z*2.5, s};
 }
 function slotRect(i){ const s=slotW/SLOT_MAX; return {x:(W-slotW)/2 + i*s, y:slotY, s}; }
@@ -101,6 +101,17 @@ function goldSprite(col){
   }catch(e){ return null; }
 }
 
+const DARK = {};
+function darkSprite(col){
+  try{
+    const k = ITEM_KEYS[col]; if(DARK[k]) return DARK[k];
+    const sp = SPRITES[k]; if(!sp || !sp.width) return null;
+    const c = document.createElement("canvas"); c.width = sp.width; c.height = sp.height;
+    const g2 = c.getContext("2d"); g2.drawImage(sp,0,0);
+    g2.globalCompositeOperation = "source-atop"; g2.fillStyle = "rgba(45,24,10,.5)"; g2.fillRect(0,0,c.width,c.height);
+    DARK[k] = c; return c;
+  }catch(e){ return null; }
+}
 // 具体物件：优先用实物贴图（assets），加载失败/未就绪时回退到 emoji 底托
 function drawItem(x,y,s,col,dim,rot){
   const C = COLORS[col], cx=x+s/2, cy=y+s/2, r=s*.5;
@@ -109,10 +120,8 @@ function drawItem(x,y,s,col,dim,rot){
     const d = s*1.16;
     ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot||0);
     if(dim){
-      ctx.globalAlpha = .8;
-      ctx.drawImage(sp, -d/2, -d/2, d, d);
-      ctx.globalAlpha = .45; ctx.fillStyle = "#3A2110";
-      ctx.beginPath(); ctx.arc(0,0,r*.86,0,7); ctx.fill();
+      const ds = darkSprite(col) || sp;               // 被压：同形压暗，不再盖圆片
+      ctx.drawImage(ds, -d/2, -d/2, d, d);
     } else {
       ctx.drawImage(sp, -d/2, -d/2, d, d);
     }
@@ -134,39 +143,32 @@ function drawItem(x,y,s,col,dim,rot){
 function cover(img, x, y, w, h){
   if(!img || !img.width) return false;
   const iw=img.width, ih=img.height, s=Math.max(w/iw, h/ih), dw=iw*s, dh=ih*s;
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();      // 必须裁切：否则贴图溢出到相邻区域（墙纹漏到筐区）
   ctx.drawImage(img, x+(w-dw)/2, y+(h-dh)/2, dw, dh);
+  ctx.restore();
   return true;
 }
 function drawScene(now){
-  const B=BASKET;
-  // 木桌：贴图，回退渐变
-  if(!cover(SPRITES.table, 0, COUNTER_H, W, H-COUNTER_H)){
-    const tg=ctx.createLinearGradient(0,B.y+B.h*.3,0,H); tg.addColorStop(0,"#c99766"); tg.addColorStop(1,"#a8743f");
-    ctx.fillStyle=tg; ctx.fillRect(0,B.y+B.h*.35,W,H);
-    ctx.strokeStyle="rgba(90,50,20,.18)"; ctx.lineWidth=2;
-    for(let i=0;i<6;i++){ const y=B.y+B.h*.4+i*28; ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(W*.3,y+6,W*.7,y-6,W,y); ctx.stroke(); }
+  // 效果图结构：柜台下方是柜体木板，物件直接堆在柜台前 —— 没有盆/筐轮廓，不会出现空腔
+  const top=COUNTER_H;
+  if(!cover(SPRITES.table, 0, top, W, H-top)){
+    ctx.fillStyle="#8a5a30"; ctx.fillRect(0,top,W,H-top);
   }
-  // 筐内衬：紧贴物件堆的暗色内腔（大部分被物件盖住，只在缝隙里透出深度）
-  const cx=B.x+B.w/2, icy=B.y+B.h*.42, irx=B.w*.52, iry=B.h*.44;
-  const ig=ctx.createRadialGradient(cx,icy-iry*.3,irx*.2, cx,icy,irx);
-  ig.addColorStop(0,"#7a5228"); ig.addColorStop(.7,"#5a3a1c"); ig.addColorStop(1,"#3c2410");
-  ctx.fillStyle=ig; ctx.beginPath(); ctx.ellipse(cx,icy,irx,iry,0,0,7); ctx.fill();
-  ctx.strokeStyle="rgba(230,190,130,.5)"; ctx.lineWidth=5;   // 筐口后唇（细）
-  ctx.beginPath(); ctx.ellipse(cx,icy,irx,iry,0,Math.PI*1.05,Math.PI*1.95); ctx.stroke();
+  const dg=ctx.createLinearGradient(0,top,0,H);                 // 压暗成柜体，物件更跳
+  dg.addColorStop(0,"rgba(40,20,6,.55)"); dg.addColorStop(.5,"rgba(40,20,6,.38)"); dg.addColorStop(1,"rgba(30,14,4,.6)");
+  ctx.fillStyle=dg; ctx.fillRect(0,top,W,H-top);
+  const sg=ctx.createLinearGradient(0,top+counterFaceH(),0,top+counterFaceH()+40);   // 台面投影
+  sg.addColorStop(0,"rgba(20,8,2,.55)"); sg.addColorStop(1,"rgba(20,8,2,0)");
+  ctx.fillStyle=sg; ctx.fillRect(0,top+counterFaceH(),W,40);
 }
-/* 前挡板：画在物件之后 —— 容器只露"后唇 + 前板"，没有可空的盆腹 */
+/* 前景：线篮上方一条木搁板沿，托住物件堆底 */
 function drawBasketFront(){
-  const B=BASKET;
-  const fy = B.y + B.h*0.66;                                // 前板顶缘（盖住堆底）
-  const g=ctx.createLinearGradient(0,fy,0,B.y+B.h);
-  g.addColorStop(0,"#a8713c"); g.addColorStop(1,"#5e3a1c");
-  ctx.fillStyle=g; ctx.fillRect(0,fy,W,B.y+B.h-fy+6);
-  const py = fy+(B.y+B.h-fy)*.45;                            // 横板缝
-  ctx.strokeStyle="rgba(50,28,10,.28)"; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(0,py); ctx.lineTo(W,py); ctx.stroke();
-  ctx.fillStyle="#c08a4e"; ctx.fillRect(0,fy-7,W,14);        // 顶缘唇边
-  ctx.fillStyle="rgba(255,225,170,.5)"; ctx.fillRect(0,fy-7,W,3);
-  ctx.fillStyle="rgba(40,22,8,.35)"; ctx.fillRect(0,fy+6,W,2);
+  const y = slotY - 20;
+  const g=ctx.createLinearGradient(0,y,0,y+12);
+  g.addColorStop(0,"#d39a5a"); g.addColorStop(1,"#7a4a22");
+  ctx.fillStyle="rgba(20,8,2,.35)"; ctx.fillRect(0,y-6,W,6);
+  ctx.fillStyle=g; ctx.fillRect(0,y,W,12);
+  ctx.fillStyle="rgba(255,230,180,.55)"; ctx.fillRect(0,y,W,2);
 }
 function drawCat(now){
   // 黑猫蹲在柜台右侧（贴图立绘，底部沉入台面；回退矢量猫）

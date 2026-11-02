@@ -15,8 +15,8 @@ function draw(now){
       const p = .5 + .5*Math.sin(now/200);
       const gs = goldSprite(t.color);
       if(gs){
-        const gd = r.s*1.32;
-        ctx.save(); ctx.globalAlpha = .5 + .35*p;
+        const gd = r.s*1.24;                       // 物件绘制 1.16 倍，金边只外扩一圈
+        ctx.save(); ctx.globalAlpha = .35 + .4*p;
         ctx.drawImage(gs, r.x+(r.s-gd)/2, r.y+(r.s-gd)/2, gd, gd);
         ctx.restore();
       } else {
