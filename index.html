@@ -243,7 +243,7 @@ function layout(){
   slotY = H - slotH - 12;
   // 柜台线：屏高 40%（效果图中立绘+柜台占上 1/3 强）
   COUNTER_H = Math.max(230, Math.min(330, Math.round(H*0.40)));
-  const top = COUNTER_H + counterFaceH() + 8, bot = slotY - 12;
+  const top = COUNTER_H + counterFaceH() + 2, bot = slotY - 12;   // 筐沿直接贴住柜台前脸，不留空档
   cell = W - 6;                                          // 筐满宽（效果图：物件顶到两边）
   ox = (W-cell)/2; oy = top;
   BASKET = {x:ox, y:top, w:cell, h:bot-top};
@@ -352,8 +352,8 @@ function drawScene(now){
     ctx.strokeStyle="rgba(90,50,20,.18)"; ctx.lineWidth=2;
     for(let i=0;i<6;i++){ const y=B.y+B.h*.4+i*28; ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(W*.3,y+6,W*.7,y-6,W,y); ctx.stroke(); }
   }
-  // 竹筐（内凹 + 编织 + 前沿高光）—— 椭圆收小贴合物件堆，避免筐底大片留空
-  const cx=B.x+B.w/2, cy=B.y+B.h*.55, rx=B.w*.54, ry=B.h*.44;
+  // 竹筐（内凹 + 编织 + 前沿高光）—— 椭圆上下贴满筐区：顶接柜台、底接托盘，无空档
+  const cx=B.x+B.w/2, cy=B.y+B.h*.5, rx=B.w*.54, ry=B.h*.5;
   ctx.fillStyle="rgba(40,20,8,.28)"; ctx.beginPath(); ctx.ellipse(cx,cy+10,rx+8,ry+8,0,0,7); ctx.fill();
   const bg=ctx.createRadialGradient(cx,cy-rx*.2,rx*.15, cx,cy,rx);
   bg.addColorStop(0,"#e0b070"); bg.addColorStop(.7,"#c08a4e"); bg.addColorStop(1,"#8a5a2c");
