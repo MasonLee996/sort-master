@@ -127,7 +127,7 @@ function floatTxt(x,y,s){ floats.push({x,y,s,t0:performance.now()}); }
 /* ---------- 柜台 + 客人绘制（大立绘构图，对齐效果图） ----------
    墙(0..COUNTER_H) → 客人大立绘站在柜台后 → 黑猫 → 台面沿口+前脸 → 订单簇(物件+圆点+赏金+耐心条) → 对白气泡 */
 let COUNTER_H = 292;                                   // 柜台台面线（layout() 按屏高 40% 重算）
-function counterFaceH(){ return Math.max(50, Math.round(H*0.072)); }
+function counterFaceH(){ return Math.max(62, Math.round(H*0.086)); }
 function seatX(i){ const n=SEATS(); return n===1 ? W*0.46 : W*(0.30+0.38*i); }
 function guestPos(o){ return {x:seatX(o.seat), y:COUNTER_H - COUNTER_H*0.24}; }   // 交付飞行目标：胸口
 
@@ -150,7 +150,7 @@ function drawCounter(now){
   // 3) 客人大立绘（底部沉入台面，被沿口遮住）+ 黑猫
   for(const o of orders) drawGuestBust(o, now);
   drawCat(now);
-  // 4) 台面沿口 + 前脸
+  // 4) 台面沿口 + 前脸（横板木纹，避免"栅栏"感）
   const fh = counterFaceH();
   const eg = ctx.createLinearGradient(0,COUNTER_H-8,0,COUNTER_H+12);
   eg.addColorStop(0,"#eec488"); eg.addColorStop(.5,"#c08a4e"); eg.addColorStop(1,"#8a5a30");
@@ -159,8 +159,12 @@ function drawCounter(now){
   const fg = ctx.createLinearGradient(0,COUNTER_H+12,0,COUNTER_H+fh);
   fg.addColorStop(0,"#9a6435"); fg.addColorStop(1,"#5e3a1c");
   ctx.fillStyle=fg; ctx.fillRect(0,COUNTER_H+12,W,fh-12);
-  ctx.strokeStyle="rgba(40,20,8,.28)"; ctx.lineWidth=2;
-  for(let x=26;x<W;x+=52){ ctx.beginPath(); ctx.moveTo(x,COUNTER_H+14); ctx.lineTo(x,COUNTER_H+fh-2); ctx.stroke(); }
+  const midY = COUNTER_H + (12+fh)/2;
+  ctx.strokeStyle="rgba(40,20,8,.20)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,midY); ctx.lineTo(W,midY); ctx.stroke();
+  ctx.lineWidth=1.5;
+  for(let x=44;x<W;x+=96){ ctx.beginPath(); ctx.moveTo(x,COUNTER_H+14); ctx.lineTo(x,midY-2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+48,midY+2); ctx.lineTo(x+48,COUNTER_H+fh-2); ctx.stroke(); }
   ctx.fillStyle="rgba(30,15,5,.35)"; ctx.fillRect(0,COUNTER_H+fh-3,W,3);
   // 5) 订单簇（画在前脸上：物件 + 圆点 + 赏金 + 耐心条，无卡片）
   for(const o of orders) drawOrderFace(o, now);
@@ -216,36 +220,37 @@ function drawGuestBust(o, now){
 
 function drawOrderFace(o, now){
   if(o.gone) return;
-  const fh = counterFaceH(), y0 = COUNTER_H + 9;
+  const fh = counterFaceH(), y0 = COUNTER_H + 10;
   const items = o.need, n = items.length;
-  const one = n===1;
-  const objS = one?34:27, dotR = one?4.2:3.4, gap = one?11.5:9.5;
-  // 簇宽：物件 + 圆点（每件 = 物件宽 + want*3 个点）
-  let cw = 8;
-  items.forEach(it=>{ cw += objS + 10 + it.want*3*gap + (one?18:10); });
+  const one = n===1;                                    // 尺寸按"单/双需求"两档，保证都装进前脸
+  const objS = one?34:27, dotR = one?4.8:3.5, gap = one?13:9.5;
+  let cw = 6;
+  items.forEach(it=>{ cw += objS + 12 + it.want*3*gap + (one?20:12); });
   cw = Math.min(cw, W-12);
   const x0 = Math.max(6, Math.min(W-cw-6, guestPos(o).x - cw/2));
-  // 行1：物件 + 圆点
-  let cx = x0+4;
+  // 行1：物件（带落地影，不悬空）+ 进度圆点（与物件垂直居中）
+  let cx = x0+3;
   items.forEach(it=>{
-    drawItem(cx, y0-1, objS, it.c, false, 0);
-    const dx0 = cx+objS+10, dy0 = y0+objS*0.42;
+    const oy = y0;
+    ctx.fillStyle="rgba(25,12,4,.32)"; ctx.beginPath(); ctx.ellipse(cx+objS/2, y0+objS+4, objS*.44, objS*.13, 0, 0, 7); ctx.fill();
+    drawItem(cx, oy, objS, it.c, false, 0);
+    const dx0 = cx+objS+12, dy0 = oy+objS*.5;
     for(let d=0; d<it.want*3; d++){
       const px=dx0+d*gap, filled = d < it.got*3;
       ctx.beginPath(); ctx.arc(px,dy0,dotR,0,7);
       if(filled){ ctx.fillStyle="#fff6e0"; ctx.fill(); ctx.strokeStyle="rgba(30,15,5,.55)"; ctx.lineWidth=1.6; ctx.stroke(); }
       else { ctx.strokeStyle="rgba(30,15,5,.5)"; ctx.lineWidth=2.6; ctx.stroke(); ctx.strokeStyle="rgba(255,246,224,.85)"; ctx.lineWidth=1.5; ctx.stroke(); }
     }
-    cx += objS + 10 + it.want*3*gap + (one?18:10);
+    cx += objS + 12 + it.want*3*gap + (one?20:12);
   });
-  // 行2：耐心条（左）+ 赏金（右）
-  const y2 = y0 + (one?40:33), bw2 = cw*0.55, p = Math.max(0, o.pat/o.max);
-  ctx.fillStyle="rgba(20,10,4,.5)"; roundRect(x0+2, y2, bw2, 7, 4); ctx.fill();
+  // 行2：耐心条（占簇左 60%）+ 赏金币与数字（同一行右端，贴成一组）
+  const y2 = y0 + objS + 5, barH = one?8:7, bw2 = cw*0.6, p = Math.max(0, o.pat/o.max);
+  ctx.fillStyle="rgba(20,10,4,.5)"; roundRect(x0+2, y2, bw2, barH, 4); ctx.fill();
   if(!o.done && !o.gone && p>0){
     ctx.fillStyle = p>.5 ? "#7ec96a" : p>.3 ? "#f2b134" : "#e85d5d";
-    roundRect(x0+2, y2, Math.max(6,bw2*p), 7, 4); ctx.fill();
+    roundRect(x0+2, y2, Math.max(6,bw2*p), barH, 4); ctx.fill();
   }
-  const cxx = x0+cw-14, cyy = y2+4;
+  const cyy = y2 + barH/2, cxx = x0 + cw - 12;
   if(o.kind==="imposter"){
     ctx.fillStyle="#c0392b"; ctx.beginPath(); ctx.arc(cxx,cyy,7,0,7); ctx.fill();
     ctx.fillStyle="#fff"; ctx.font="bold 10px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("?",cxx,cyy+1);

@@ -37,8 +37,7 @@ function layout(){
   slotY = H - slotH - 12;
   // 柜台线：屏高 40%（效果图中立绘+柜台占上 1/3 强）
   COUNTER_H = Math.max(230, Math.min(330, Math.round(H*0.40)));
-  const faceH = Math.max(50, Math.round(H*0.072));       // 柜台前脸（订单带）
-  const top = COUNTER_H + faceH + 8, bot = slotY - 12;
+  const top = COUNTER_H + counterFaceH() + 8, bot = slotY - 12;
   cell = W - 6;                                          // 筐满宽（效果图：物件顶到两边）
   ox = (W-cell)/2; oy = top;
   BASKET = {x:ox, y:top, w:cell, h:bot-top};
