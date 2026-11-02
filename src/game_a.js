@@ -82,6 +82,26 @@ const SPRITES = {};
   }catch(e){}
 })();
 
+/* 客人想要物件的「贴合金光」：把物件贴图剪影染成金色，与物件同形 —— 不再画浮空圆环 */
+const GOLD = {};
+function goldSprite(col){
+  try{
+    const k = ITEM_KEYS[col];
+    if(GOLD[k]) return GOLD[k];
+    const sp = SPRITES[k];
+    if(!sp || !sp.width) return null;               // 贴图未就绪：不缓存，之后还能再试
+    const c = document.createElement("canvas");
+    c.width = sp.width; c.height = sp.height;
+    const g2 = c.getContext("2d");
+    g2.drawImage(sp, 0, 0);
+    g2.globalCompositeOperation = "source-in";      // 只保留剪影，整体染金
+    g2.fillStyle = "#ffd668";
+    g2.fillRect(0, 0, c.width, c.height);
+    GOLD[k] = c;
+    return c;
+  }catch(e){ return null; }
+}
+
 // 具体物件：优先用实物贴图（assets），加载失败/未就绪时回退到 emoji 底托
 function drawItem(x,y,s,col,dim,rot){
   const C = COLORS[col], cx=x+s/2, cy=y+s/2, r=s*.5;

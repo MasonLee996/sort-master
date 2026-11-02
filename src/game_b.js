@@ -10,9 +10,23 @@ function draw(now){
   const alive = tiles.filter(t=>t.alive).sort((a,b)=>a.z-b.z || a.y-b.y), WANT = wantedSet();
   for(const t of alive){
     const r = tileRect(t), cov = isCovered(t,tiles);
-    // 客人要的、且现在能拿的：脉动金圈 —— 订单在筐里"看得见"
-    if(WANT[t.color] && !cov){ const pr = r.s*.56 + Math.sin(now/180)*2;
-      ctx.strokeStyle="rgba(242,177,52,.95)"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(r.x+r.s/2, r.y+r.s/2, pr, 0, 7); ctx.stroke(); }
+    // 客人要的、且现在能拿的：贴合金光呼吸 —— 染金剪影垫在物件底下，与物件同形，不再画浮空圆环
+    if(WANT[t.color] && !cov){
+      const p = .5 + .5*Math.sin(now/200);
+      const gs = goldSprite(t.color);
+      if(gs){
+        const gd = r.s*1.32;
+        ctx.save(); ctx.globalAlpha = .5 + .35*p;
+        ctx.drawImage(gs, r.x+(r.s-gd)/2, r.y+(r.s-gd)/2, gd, gd);
+        ctx.restore();
+      } else {
+        const gx=r.x+r.s/2, gy=r.y+r.s/2;
+        const g=ctx.createRadialGradient(gx,gy,r.s*.15,gx,gy,r.s*.6);
+        g.addColorStop(0,`rgba(255,214,110,${.45+.3*p})`);
+        g.addColorStop(1,"rgba(255,190,70,0)");
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(gx,gy,r.s*.6,0,7); ctx.fill();
+      }
+    }
     drawItem(r.x,r.y,r.s,t.color, cov && peekT<=0, t.rot);
   }
   ctx.restore();
