@@ -47,6 +47,13 @@ function draw(now){
   // 特效粒子
   for(let i=fx.length-1;i>=0;i--){ const p=fx[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=.25; p.life-=.03;
     ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.c; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); ctx.globalAlpha=1; if(p.life<=0) fx.splice(i,1); }
+  // 最后一击预警：篮将满 → 全屏红脉冲边框（输不再突兀）
+  if(slot.length >= slotCap-1){
+    const a = .14 + .14*Math.abs(Math.sin(now/170));
+    ctx.save(); ctx.strokeStyle=`rgba(217,83,79,${a})`; ctx.lineWidth=12; ctx.strokeRect(6,6,W-12,H-12);
+    const vg=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H*.75); vg.addColorStop(0,"rgba(217,83,79,0)"); vg.addColorStop(1,`rgba(217,83,79,${a*.7})`);
+    ctx.fillStyle=vg; ctx.fillRect(0,0,W,H); ctx.restore();
+  }
   if(peekT>0) peekT--;
   requestAnimationFrame(draw);
 }
@@ -92,7 +99,9 @@ function resolve(){
   }}
   if(!tiles.some(t=>t.alive) && !slot.length){ return setTimeout(win,350); }
   if(slot.length>=slotCap){ return setTimeout(lose,250); }
-  if(slot.length>=slotCap-2){ SFX.warn(); vibrate(30); cat("danger"); }
+  const dangerN = slotCap - slot.length;                       // 剩余空格
+  if(dangerN<=2){ SFX.warn(); vibrate(30); cat("danger"); }
+  if(dangerN===1){ toast("⚠️ 篮只剩 1 格！用「退回」或「抖篮」挪一挪"); shakeT=Math.max(shakeT,.5); }  // 最后一击预警
   if(!Object.values(cnt).some(v=>v>=3)) combo=0;
   updateHUD();
 }

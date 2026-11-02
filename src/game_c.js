@@ -21,13 +21,22 @@ function startLevel(lv){
 function lose(){
   state="lose"; SFX.lose(); vibrate([60,40,60]); cat("lose");
   const left = tiles.filter(t=>t.alive).length;
+  const coinCost = 40;
   modal(`<h2>😼 黑猫：${catSay}</h2><p>篮子满了……筐里只剩 <b>${left}</b> 件！</p>
-    ${revived?"":`<button class="btn blue" id="bRev">▶ 看视频 · 清出 3 格继续</button>`}
+    ${revived?"":`<button class="btn blue" id="bRev">▶ 看视频 · 清出 3 格继续</button>
+    <button class="btn" id="bCoin">💰 花 ${coinCost} 金币 · 清出 3 格继续（有 ${save.coins}）</button>`}
     <button class="btn" id="bRetry">重新开始</button>
     <button class="btn gray" id="bShareL">喊朋友来帮我过</button>`);
-  if(!revived) document.getElementById("bRev").onclick = ()=>fakeAd(()=>{ revived=true; state="play";
-    const take=slot.splice(0,3); pushBack(tiles, take.map(s=>s.color));
-    closeModal(); updateHUD(); toast("复活！再小心点～"); });
+  if(!revived){
+    document.getElementById("bRev").onclick = ()=>fakeAd(()=>{ revived=true; state="play";
+      const take=slot.splice(0,3); pushBack(tiles, take.map(s=>s.color));
+      closeModal(); updateHUD(); toast("复活！再小心点～"); });
+    document.getElementById("bCoin").onclick = ()=>{
+      if(save.coins<coinCost) return toast("金币不够，多做订单或看视频吧");
+      save.coins-=coinCost; revived=true; state="play"; persist();
+      const take=slot.splice(0,3); pushBack(tiles, take.map(s=>s.color));
+      closeModal(); updateHUD(); toast("💰 花 "+coinCost+" 金币续命！"); };
+  }
   document.getElementById("bRetry").onclick = ()=>startLevel(level);
   document.getElementById("bShareL").onclick = ()=>share(`黑猫把我的筐弄乱了，《拾线铺》第${level}关只剩${left}件没收完！你能过吗？`);
 }
