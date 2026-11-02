@@ -14,6 +14,7 @@ canvas{display:block;width:100%;flex:1;touch-action:none}
 .bar{display:flex;gap:10px;justify-content:center;padding:8px 0 14px}
 .tool{position:relative;width:64px;height:64px;border-radius:18px;background:#fff8ee;border:2px solid #e4cfb2;font-size:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 3px 0 #d8bf9c}
 .tool small{font-size:11px;font-weight:700;margin-top:2px}
+.tool img{width:34px;height:34px;display:block;object-fit:contain}
 .tool i{position:absolute;top:-6px;right:-6px;font-style:normal;background:#e85d5d;color:#fff;font-size:11px;border-radius:10px;padding:1px 6px}
 .tool.ad i{background:#4a90d9}
 .tool:active{transform:translateY(2px);box-shadow:0 1px 0 #d8bf9c}
@@ -54,10 +55,10 @@ canvas{display:block;width:100%;flex:1;touch-action:none}
   <div class="top"><span class="pill" id="lvTxt">第 1 关</span><span class="pill" id="leftTxt">剩 0</span><span class="pill">⭐ <b id="starTxt">0</b> · 💰 <b id="coinTxt">0</b></span></div>
   <canvas id="cv"></canvas>
   <div class="bar">
-    <div class="tool" id="tShake">🧺<small>抖篮</small><i>1</i></div>
-    <div class="tool" id="tBack">↩️<small>退回</small><i>1</i></div>
-    <div class="tool" id="tPeek">👁️<small>透视</small><i>1</i></div>
-    <div class="tool" id="tShop">🏠<small>线铺</small></div>
+    <div class="tool" id="tShake"><img class="ico" id="iShake" alt="抖篮"><small>抖篮</small><i>1</i></div>
+    <div class="tool" id="tBack"><img class="ico" id="iBack" alt="退回"><small>退回</small><i>1</i></div>
+    <div class="tool" id="tPeek"><img class="ico" id="iPeek" alt="透视"><small>透视</small><i>1</i></div>
+    <div class="tool" id="tShop"><img class="ico" id="iShop" alt="线铺"><small>线铺</small></div>
   </div>
   <div class="mask" id="mask"><div class="card" id="card"></div></div>
   <div class="toast" id="toast"></div>

@@ -48,7 +48,7 @@ function newOrder(seat){
   if(g.kind==="vip"){ pat = Math.max(4, Math.round(pat*0.5)); reward = reward*3; }   // VIP：赏金×3、耐心减半
   const o = {g, kind:g.kind||kind, regular: kind==="regular", need, seat, done:false, gone:false, pat, max:pat, reward,
              enter: performance.now(), leaveAt: 0, bump: 0, urged:false, say:"", sayUntil:0};
-  guestSay(o, g.kind==="imposter" ? pick1(IMPOSTOR_SAY) : ITEM_WHY[need[0].c] + "，要" + ITEMS[need[0].c] + "！", 2600);
+  guestSay(o, g.kind==="imposter" ? pick1(IMPOSTOR_SAY) : ITEM_WHY[need[0].c] + "，要" + ITEM_NAMES[need[0].c] + "！", 2600);
   return o;
 }
 function freeSeat(){ const used = new Set(orders.map(o=>o.seat)); for(let i=0;i<SEATS();i++) if(!used.has(i)) return i; return -1; }

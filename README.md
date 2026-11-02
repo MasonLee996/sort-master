@@ -19,7 +19,8 @@
 ## 目录
 | 路径 | 说明 |
 |---|---|
-| `index.html` | 构建产物，单文件可直接打开 / GitHub Pages 发布 |
+| `index.html` | 构建产物，单文件可直接打开 / GitHub Pages 发布（贴图已 base64 内联） |
+| `src/assets/` | 贴图素材：10 个物件 + 4 个道具图标，128×128 透明 PNG |
 | `src/template.html` | HTML/CSS 模板（`/*__JS__*/` 占位） |
 | `src/core.js` | 数据（关卡/物件/剧情）+ 有解生成器 |
 | `src/game_a.js` `game_b.js` | 绘制、音效、交互、三消、道具 |
@@ -27,14 +28,19 @@
 | `src/game_c.js` | 关卡流程、结算、广告占位、线铺 |
 | `src/sim3.js` `sweep.js` | 调参模拟器（订单奖励 / 耐心 / 单关参数扫描） |
 | `src/smoke.js` | Node vm 冒烟测试（全 10 关流程） |
+| `design/` | 效果图（原画版 / 纯矢量对照版） |
 | `docs/` | 玩法重设计方案、项目决策卡 |
 
 ## 开发
 ```bash
-python src/build.py      # 拼接 src → index.html
+python src/build.py      # 拼接 src → index.html，并把 src/assets/*.png 内联成 ASSETS
 node src/smoke.js        # 冒烟
+node .workbuddy/tools/verify_assets.js   # 贴图接入校验（内联/加载/绘制/回退）
 REWARD=slot MAXSLOT=9 CHASE=3 PATK=11 PATB=8 node src/sim3.js   # 难度/订单平衡
 ```
+
+**贴图约定**：`COLORS[i]` ↔ `ITEM_KEYS[i]` ↔ `src/assets/<key>.png` 一一对应（颜色=物件）。
+贴图未加载完成时 `drawItem` 自动回退到 emoji 绘制，不会白屏。
 
 ## 历史
 旧版《收纳大师》（倒球解谜 H5）已废弃，完整代码保留在分支 `archive/sort-master-h5` / 标签 `archive-h5-final`。

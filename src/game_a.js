@@ -67,9 +67,37 @@ function drawYarn(x,y,s,col,dim,alpha){
   if(dim){ ctx.fillStyle="rgba(70,50,35,.45)"; roundRect(x+s*.04,y+s*.04,s*.92,s*.92,s*.2); ctx.fill(); }
   ctx.restore();
 }
-// 具体物件：彩色底托 + emoji 物件（按"形状"认，色弱也能玩），带旋转
+/* ---------- 贴图：build.py 把 src/assets/*.png 内联成 ASSETS ---------- */
+const SPRITES = {};
+(function loadSprites(){
+  try{
+    if(typeof ASSETS === "undefined" || typeof Image === "undefined") return;
+    Object.keys(ASSETS).forEach(function(k){
+      const im = new Image();
+      im.onload = function(){ SPRITES[k] = im; };
+      im.src = ASSETS[k];
+    });
+  }catch(e){}
+})();
+
+// 具体物件：优先用实物贴图（assets），加载失败/未就绪时回退到 emoji 底托
 function drawItem(x,y,s,col,dim,rot){
   const C = COLORS[col], cx=x+s/2, cy=y+s/2, r=s*.5;
+  const sp = SPRITES[ITEM_KEYS[col]];
+  if(sp){
+    const d = s*1.08;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot||0);
+    if(dim){
+      ctx.globalAlpha = .8;
+      ctx.drawImage(sp, -d/2, -d/2, d, d);
+      ctx.globalAlpha = .45; ctx.fillStyle = "#3A2110";
+      ctx.beginPath(); ctx.arc(0,0,r*.86,0,7); ctx.fill();
+    } else {
+      ctx.drawImage(sp, -d/2, -d/2, d, d);
+    }
+    ctx.restore();
+    return;
+  }
   ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot||0);
   ctx.fillStyle="rgba(60,35,15,.28)"; ctx.beginPath(); ctx.ellipse(r*.08,r*.16,r*.98,r*.9,0,0,7); ctx.fill();
   const g = ctx.createRadialGradient(-r*.35,-r*.4,r*.1,0,0,r);

@@ -136,3 +136,15 @@ function updateHUD(){
 }
 let toastT=0;
 function toast(s){ const el=document.getElementById("toast"); el.textContent=s; el.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("on"),1300); }
+
+/* ---------- 道具按钮图标（贴图，来自 ASSETS） ---------- */
+(function bindToolIcons(){
+  try{
+    if(typeof ASSETS === "undefined") return;
+    const map = {iShake:"basket", iBack:"arrow", iPeek:"eye", iShop:"house"};
+    Object.keys(map).forEach(function(id){
+      const el = document.getElementById(id);
+      if(el && ASSETS[map[id]]) el.src = ASSETS[map[id]];
+    });
+  }catch(e){}
+})();

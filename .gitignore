@@ -21,3 +21,6 @@ _site/
 
 # 旧版《收纳大师》本地留档（远端见 archive/sort-master-h5 分支）
 .archive_local/
+
+# AI 生图原始大图（切好的素材在 src/assets/，效果图在 design/）
+design/gen/

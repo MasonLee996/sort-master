@@ -45,6 +45,9 @@ function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+
 
 /* ---------- 情境：具体物件（按形状认，不靠颜色）+ 每关一个"事故现场" ---------- */
 const ITEMS = ["🧶","🧦","🧤","🧣","🎀","🧸","✂️","🧵","🧷","👒"];
+// 与 COLORS 一一对应的贴图键 / 中文名（颜色=物件，见 ITEM_KEYS 顺序）
+const ITEM_KEYS  = ["yarn","sock","glove","scarf","bow","teddy","scissors","spool","pin","hat"];
+const ITEM_NAMES = ["线团","袜子","手套","围巾","蝴蝶结","小熊","剪刀","线轴","别针","帽子"];
 const TALES = [
   {t:"黑猫打翻了针线筐", s:"奶奶刚出门，黑猫就把筐掀了……趁她回来前收拾好！"},
   {t:"赶集日大混乱", s:"客人把整筐货翻得乱七八糟，全镇只有 23% 的人收拾完过。"},
