@@ -125,4 +125,10 @@ function maybeCheckIn(cb){
 }
 
 /* ---------- 启动 ---------- */
-window.addEventListener("load", ()=>{ maybeCheckIn(()=>{ startLevel(save.level); requestAnimationFrame(draw); }); });
+window.addEventListener("load", ()=>{
+  try{ layout(); }catch(e){ showErr(e); }
+  maybeCheckIn(()=>{
+    try{ startLevel(save.level); }catch(e){ showErr(e); }
+    requestAnimationFrame(draw);
+  });
+});

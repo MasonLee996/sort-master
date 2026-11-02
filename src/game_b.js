@@ -1,5 +1,7 @@
 /* ---------- 主循环绘制 ---------- */
 function draw(now){
+  if(!W || !H || H<2){ try{ layout(); }catch(e){} }
+  try{
   ctx.clearRect(0,0,W,H);
   drawScene(now);
   drawCounter(now);
@@ -71,6 +73,7 @@ function draw(now){
     ctx.fillStyle=vg; ctx.fillRect(0,0,W,H); ctx.restore();
   }
   if(peekT>0) peekT--;
+  }catch(e){ showErr(e); }
   requestAnimationFrame(draw);
 }
 

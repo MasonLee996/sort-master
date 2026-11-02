@@ -1,3 +1,9 @@
+/* 真机运行时错误可见化：任何未捕获异常 / Promise 失败都显示在屏幕底部红条，便于定位（正常时不可见） */
+(function(){
+  function s(e){ try{ var d=document.getElementById('err'); if(d){ d.style.display='block'; d.textContent += '\n'+(e&&e.stack?e.stack.split('\n').slice(0,6).join('\n'):String(e)); } }catch(_){} }
+  window.onerror = function(m,f,l,c,e){ s(e||(m+' @'+(l||'?')+':'+(c||'?'))); return false; };
+  window.addEventListener('unhandledrejection', function(ev){ s('PROMISE '+(ev.reason&&ev.reason.message||ev.reason)); });
+})();
 /* ====== 渲染 & 交互 ====== */
 const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
 let W=0, H=0, DPR=1, cell=0, ox=0, oy=0, slotY=0, slotW=0;
@@ -27,10 +33,19 @@ const SFX = {
 function vibrate(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} }
 
 /* ---------- 布局 ---------- */
+function showErr(e){ try{ var d=document.getElementById('err'); if(d){ d.style.display='block'; d.textContent += '\n'+(e&&e.stack?e.stack.split('\n').slice(0,6).join('\n'):String(e)); } }catch(_){} }
 function layout(){
   DPR = Math.min(2, window.devicePixelRatio||1);
-  const r = cv.getBoundingClientRect(); W=r.width; H=r.height;
-  cv.width = W*DPR; cv.height = H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  let r = cv.getBoundingClientRect();
+  W = r.width || window.innerWidth || 360;
+  H = r.height;
+  if(H < 2){                              // 移动端 WebView 偶发 height:100% 解析为 0 → 按视口高度强算
+    const top=document.querySelector('.top'), bar=document.querySelector('.bar');
+    const oh=(top?top.offsetHeight:0)+(bar?bar.offsetHeight:0);
+    H = Math.max(160, (window.innerHeight||document.documentElement.clientHeight||640) - oh);
+    try{ cv.style.height = H+'px'; }catch(e){}
+  }
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
   if(!P) return;
   slotW = Math.min(W-24, 420);
   const slotH = slotW/SLOT_MAX;
@@ -48,6 +63,8 @@ function layout(){
 let BASKET = {x:0,y:0,w:1,h:1}, CRATE = {x:0,y:0,w:1,h:1};
 const CRATE_AR = 339/560, CRATE_FRONT = 0.70;   // 贴图宽高比；前沿(前筐边+前壁)从贴图 70% 高处开始
 window.addEventListener("resize", layout);
+if(window.visualViewport) window.visualViewport.addEventListener("resize", layout);
+window.addEventListener("orientationchange", function(){ setTimeout(layout, 250); });
 
 function tileRect(t){
   const s = t.r*2*BASKET.w*1.3;                     // 物件区收进筐内后放大补偿
