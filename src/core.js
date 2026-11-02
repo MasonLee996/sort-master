@@ -34,7 +34,7 @@ const STORY = [
 
 /* ---------- 存档（try/catch 防无痕模式） ---------- */
 const SAVE_KEY = "shixianpu_demo_v1";
-let save = {level:1, stars:0, coins:0, bought:[]};
+let save = {level:1, stars:0, coins:0, bought:[], xiaohua:0};
 try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if(s) save = Object.assign(save, s); }catch(e){}
 function persist(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){} }
 

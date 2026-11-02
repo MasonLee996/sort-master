@@ -11,6 +11,14 @@ const GUESTS = [
 const VIP_GUEST = {ico:"🧙",n:"斗篷客",kind:"vip"};
 const CAT_GUEST  = {ico:"😼",n:"神秘客",kind:"imposter"};
 const IMPOSTOR_SAY = ["喵（咳）…我是来买东西的！","快给我，别问那么多","嘻…这颜色归我了","别老盯着我的尾巴看"];
+// 剧情串联：小花是跨关回访的常客，在 3/5/7/9 关必出现，完成她订单→故事+1、额外金币
+const XH_LEVELS = [3,5,7,9];
+const XH_LINES = [
+  "小花：上次那团线，我织成围巾啦！",
+  "小花：奶奶说你手艺越来越好了～",
+  "小花：镇上的灰雾，好像淡了一点点。",
+  "小花：等我长大，也要来帮你守铺子！"
+];
 let orders = [], orderDone = 0, orderLost = 0, coinsGot = 0, guestIdx = 0, deliverFx = [];
 const SEATS = ()=> level===1 ? 1 : 2;
 const pick1 = a => a[Math.floor(Math.random()*a.length)];
@@ -30,12 +38,15 @@ function newOrder(seat){
   const kinds = level<=2 ? 1 : (Math.random()<.45 && cols.length>1 ? 2 : 1);
   const need = cols.slice(0,kinds).map(c=>({c, want: Math.min(Math.floor(have[c]/3), Math.random()<.3?2:1), got:0}));
   const sets = need.reduce((s,x)=>s+x.want,0);
-  const kind = rollKind();
-  const g = kind==="vip" ? VIP_GUEST : kind==="imposter" ? CAT_GUEST : GUESTS[guestIdx++ % GUESTS.length];
+  // 小花（常客）在剧情关必出现在座位0；否则按风险/收益掷特殊客人
+  let g, kind="normal";
+  if(seat===0 && XH_LEVELS.includes(level) && !orders.some(o=>o.regular)){ g = GUESTS[1]; kind="regular"; }
+  else { const rk = rollKind(); kind = rk;
+    g = rk==="vip" ? VIP_GUEST : rk==="imposter" ? CAT_GUEST : GUESTS[guestIdx++ % GUESTS.length]; }
   let pat = Math.round(sets*11 + 8 - Math.min(4, level*.4));   // 耐心 = 拿取次数（sim3 调参：11/8）
   let reward = 8 + sets*10;
   if(g.kind==="vip"){ pat = Math.max(4, Math.round(pat*0.5)); reward = reward*3; }   // VIP：赏金×3、耐心减半
-  const o = {g, kind:g.kind, need, seat, done:false, gone:false, pat, max:pat, reward,
+  const o = {g, kind:g.kind||kind, regular: kind==="regular", need, seat, done:false, gone:false, pat, max:pat, reward,
              enter: performance.now(), leaveAt: 0, bump: 0, urged:false, say:"", sayUntil:0};
   guestSay(o, g.kind==="imposter" ? pick1(IMPOSTOR_SAY) : ITEM_WHY[need[0].c] + "，要" + ITEMS[need[0].c] + "！", 2600);
   return o;
@@ -81,15 +92,17 @@ function deliver(c, fromRects){
       o.done=true; o.leaveAt=now+450; orderDone++;
       if(o.kind==="imposter"){ imposterReveal(o); setTimeout(refillOrders,1300); return true; }   // 黑猫假扮：喂它就是上当
       coinsGot+=o.reward;
+      if(o.regular){ save.xiaohua=(save.xiaohua||0)+1; persist(); const b=8; coinsGot+=b; floatTxt(G.x,G.y-30,"🌸 小花 +"+b); toast("🌸 小花的故事 +1（"+(save.xiaohua)+"/"+XH_LEVELS.length+"）"); }
       const grow = slotCap < SLOT_MAX; if(grow) slotCap++;
       setTimeout(()=>{
-        guestSay(o, pick1(GUEST_LINES.thanks), 1400);
+        const thx = o.regular ? (XH_LINES[Math.min((save.xiaohua||1)-1, XH_LINES.length-1)]||"小花：又见面啦～") : pick1(GUEST_LINES.thanks);
+        guestSay(o, thx, 1600);
         [784,988,1318].forEach((f,k)=>setTimeout(()=>beep(f,.16,"triangle",.16),k*80));
         vibrate([15,30,15]);
         // 局内回报：每完成一单，线篮 +1 格（上限 SLOT_MAX）—— 让"做订单"从陷阱变成保命投资
         let gift = "";
         if(grow){ slotFlash = performance.now()+1400; gift = "  🧺 篮子+1格"; }
-        floatTxt(G.x, G.y-30, "💰+"+o.reward + (o.kind==="vip"?" ×3":"") + gift);
+        floatTxt(G.x, G.y-30, "💰+"+o.reward + (o.kind==="vip"?" ×3":"") + (o.regular?"  🌸":gift));
         if(Math.random()<.5) cat("guestDone");
       }, 420);
       setTimeout(refillOrders,1300);
