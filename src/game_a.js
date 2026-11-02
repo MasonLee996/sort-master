@@ -34,11 +34,13 @@ function layout(){
   if(!P) return;
   slotW = Math.min(W-24, 420);
   const slotH = slotW/SLOT_MAX;
-  slotY = H - slotH - 14;
-  // 筐（场景主体）：顶部留 70px 给黑猫与对白
-  const top = COUNTER_H + 6, bot = slotY - 18;
-  cell = Math.min(W - 16, (bot - top) * 1.15);          // 筐的宽度
-  ox = (W - cell)/2; oy = top;
+  slotY = H - slotH - 12;
+  // 柜台线：屏高 40%（效果图中立绘+柜台占上 1/3 强）
+  COUNTER_H = Math.max(230, Math.min(330, Math.round(H*0.40)));
+  const faceH = Math.max(50, Math.round(H*0.072));       // 柜台前脸（订单带）
+  const top = COUNTER_H + faceH + 8, bot = slotY - 12;
+  cell = W - 6;                                          // 筐满宽（效果图：物件顶到两边）
+  ox = (W-cell)/2; oy = top;
   BASKET = {x:ox, y:top, w:cell, h:bot-top};
 }
 let BASKET = {x:0,y:0,w:1,h:1};
@@ -85,7 +87,7 @@ function drawItem(x,y,s,col,dim,rot){
   const C = COLORS[col], cx=x+s/2, cy=y+s/2, r=s*.5;
   const sp = SPRITES[ITEM_KEYS[col]];
   if(sp){
-    const d = s*1.08;
+    const d = s*1.16;
     ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot||0);
     if(dim){
       ctx.globalAlpha = .8;
@@ -125,8 +127,8 @@ function drawScene(now){
     ctx.strokeStyle="rgba(90,50,20,.18)"; ctx.lineWidth=2;
     for(let i=0;i<6;i++){ const y=B.y+B.h*.4+i*28; ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(W*.3,y+6,W*.7,y-6,W,y); ctx.stroke(); }
   }
-  // 竹筐（内凹 + 编织 + 前沿高光）
-  const cx=B.x+B.w/2, cy=B.y+B.h*.55, rx=B.w*.52, ry=B.h*.5;
+  // 竹筐（内凹 + 编织 + 前沿高光）—— 椭圆收小贴合物件堆，避免筐底大片留空
+  const cx=B.x+B.w/2, cy=B.y+B.h*.55, rx=B.w*.54, ry=B.h*.44;
   ctx.fillStyle="rgba(40,20,8,.28)"; ctx.beginPath(); ctx.ellipse(cx,cy+10,rx+8,ry+8,0,0,7); ctx.fill();
   const bg=ctx.createRadialGradient(cx,cy-rx*.2,rx*.15, cx,cy,rx);
   bg.addColorStop(0,"#e0b070"); bg.addColorStop(.7,"#c08a4e"); bg.addColorStop(1,"#8a5a2c");
@@ -142,29 +144,37 @@ function drawScene(now){
   ctx.strokeStyle="#6e4020"; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(cx,cy,rx*.9,ry*.9,0,0,7); ctx.stroke();
 }
 function drawCat(now){
-  const x=W-66, y=COUNTER_H-66+Math.sin(now/400)*2, s=1;   // 黑猫蹲在柜台上
-  ctx.save(); ctx.translate(x,y);
-  if(catMood==="lose"||catMood==="danger"){ ctx.translate(0,Math.sin(now/60)*2); }
-  const cg=ctx.createLinearGradient(0,0,0,46); cg.addColorStop(0,"#3a2f2a"); cg.addColorStop(1,"#1e1714");
-  ctx.fillStyle=cg;
-  ctx.beginPath(); ctx.ellipse(30,40,22,18,0,0,7); ctx.fill();               // 身体
-  ctx.beginPath(); ctx.arc(30,22,15,0,7); ctx.fill();                          // 头
-  ctx.beginPath(); ctx.moveTo(17,14); ctx.lineTo(19,0); ctx.lineTo(27,10); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(43,14); ctx.lineTo(41,0); ctx.lineTo(33,10); ctx.fill();
-  ctx.strokeStyle="#2b2320"; ctx.lineWidth=5; ctx.lineCap="round";
-  ctx.beginPath(); ctx.moveTo(50,46); ctx.quadraticCurveTo(66,40+Math.sin(now/200)*8,60,22); ctx.stroke();
-  // 眼睛：得意眯眼 / 惊讶圆眼
-  ctx.fillStyle="#f6d34a";
-  if(catMood==="win"||catMood==="combo"){ ctx.beginPath(); ctx.arc(24,21,4.5,0,7); ctx.arc(36,21,4.5,0,7); ctx.fill(); ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(24,21,2,0,7); ctx.arc(36,21,2,0,7); ctx.fill(); }
-  else { ctx.strokeStyle="#f6d34a"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(24,23,4,Math.PI*1.1,Math.PI*1.9); ctx.stroke(); ctx.beginPath(); ctx.arc(36,23,4,Math.PI*1.1,Math.PI*1.9); ctx.stroke(); }
+  // 黑猫蹲在柜台右侧（贴图立绘，底部沉入台面；回退矢量猫）
+  const bob = Math.sin(now/400)*2, shiver = (catMood==="lose"||catMood==="danger") ? Math.sin(now/60)*2 : 0;
+  const ch = Math.max(64, COUNTER_H*0.42), cw = ch*0.8;
+  const cx = W - cw*0.62, by = COUNTER_H + 14;
+  const sp = SPRITES.cat;
+  ctx.save(); ctx.translate(0, bob + shiver);
+  if(sp){
+    ctx.drawImage(sp, cx-cw/2, by-ch, cw, ch);
+  } else {
+    ctx.save(); ctx.translate(cx-33, by-58); ctx.scale(cw/66, ch/58);
+    const cg=ctx.createLinearGradient(0,0,0,46); cg.addColorStop(0,"#3a2f2a"); cg.addColorStop(1,"#1e1714");
+    ctx.fillStyle=cg;
+    ctx.beginPath(); ctx.ellipse(30,40,22,18,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(30,22,15,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(17,14); ctx.lineTo(19,0); ctx.lineTo(27,10); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(43,14); ctx.lineTo(41,0); ctx.lineTo(33,10); ctx.fill();
+    ctx.strokeStyle="#2b2320"; ctx.lineWidth=5; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(50,46); ctx.quadraticCurveTo(66,40,60,22); ctx.stroke();
+    ctx.fillStyle="#f6d34a";
+    if(catMood==="win"||catMood==="combo"){ ctx.beginPath(); ctx.arc(24,21,4.5,0,7); ctx.arc(36,21,4.5,0,7); ctx.fill(); ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(24,21,2,0,7); ctx.arc(36,21,2,0,7); ctx.fill(); }
+    else { ctx.strokeStyle="#f6d34a"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(24,23,4,Math.PI*1.1,Math.PI*1.9); ctx.stroke(); ctx.beginPath(); ctx.arc(36,23,4,Math.PI*1.1,Math.PI*1.9); ctx.stroke(); }
+    ctx.restore();
+  }
   ctx.restore();
   // 对白气泡
   if(catSay && now < catSayUntil){
     ctx.font="bold 14px sans-serif"; const tw=ctx.measureText(catSay).width+20;
-    const bx=Math.max(8,W-tw-8), by=COUNTER_H+4;
-    ctx.fillStyle="#fff"; roundRect(bx,by,tw,30,14); ctx.fill(); ctx.strokeStyle="#2b2320"; ctx.lineWidth=2; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(W-44,by+2); ctx.lineTo(W-36,by-8); ctx.lineTo(W-28,by+2); ctx.fillStyle="#fff"; ctx.fill();
-    ctx.fillStyle="#2b2320"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(catSay,bx+10,by+15);
+    const bx=Math.max(8,W-tw-8), by2=Math.max(4, by-ch-32);
+    ctx.fillStyle="#fff"; roundRect(bx,by2,tw,30,14); ctx.fill(); ctx.strokeStyle="#2b2320"; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W-44,by2+2); ctx.lineTo(W-36,by2-8); ctx.lineTo(W-28,by2+2); ctx.fillStyle="#fff"; ctx.fill();
+    ctx.fillStyle="#2b2320"; ctx.textAlign="left"; ctx.textBaseline="middle"; ctx.fillText(catSay,bx+10,by2+15);
   }
 }
 let catMood="start", catSay="", catSayUntil=0;

@@ -16,7 +16,6 @@ function draw(now){
     drawItem(r.x,r.y,r.s,t.color, cov && peekT<=0, t.rot);
   }
   ctx.restore();
-  drawCat(now);
   // 线篮
   const danger = slot.length >= slotCap-2;
   const s0 = slotRect(0);
@@ -25,7 +24,8 @@ function draw(now){
   ctx.fillStyle = tg; roundRect(s0.x-8, slotY-8, slotW+16, s0.s+16, 18); ctx.fill();
   ctx.strokeStyle = danger ? "#e8604a" : "#c8912f"; ctx.lineWidth=3; ctx.stroke();
   for(let i=0;i<SLOT_MAX;i++){ const r=slotRect(i);
-    if(i<slotCap){ ctx.fillStyle = (i===slotCap-1 && slotFlash>now) ? "#ffe08a" : "#fbf1e2"; roundRect(r.x+3,r.y+3,r.s-6,r.s-6,10); ctx.fill(); }
+    if(i<slotCap){ ctx.fillStyle = (i===slotCap-1 && slotFlash>now) ? "#ffe08a" : "#fbf1e2"; roundRect(r.x+3,r.y+3,r.s-6,r.s-6,10); ctx.fill();
+      ctx.strokeStyle="#d8b06a"; ctx.lineWidth=1.5; ctx.stroke(); }
     else { ctx.fillStyle="rgba(120,90,60,.18)"; roundRect(r.x+3,r.y+3,r.s-6,r.s-6,10); ctx.fill();
       ctx.font=(r.s*.36)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=.55; ctx.fillText("🔒",r.x+r.s/2,r.y+r.s/2); ctx.globalAlpha=1; } }
   slot.forEach((it,i)=>{ const r=slotRect(i); it.dx += (r.x-it.dx)*.35; drawItem(it.dx+3,r.y+3,r.s-6,it.color,false,0); });
