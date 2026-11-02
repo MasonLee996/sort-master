@@ -590,12 +590,21 @@ function guestPos(o){
   return {x: L + span*o.seat + 30, y: 62};
 }
 function drawCounter(now){
-  // 墙 + 柜台台面
-  const wg = ctx.createLinearGradient(0,0,0,COUNTER_H); wg.addColorStop(0,"#f3e2c7"); wg.addColorStop(1,"#e8d0ad");
+  // 墙 + 柜台台面（随修复进度变暖）
+  const prog = (save.bought?save.bought.length:0)/SHOP.length;
+  const wg = ctx.createLinearGradient(0,0,0,COUNTER_H); wg.addColorStop(0, prog>.5?"#fff0d6":"#f3e2c7"); wg.addColorStop(1, prog>0?"#f0dcb8":"#e8d0ad");
   ctx.fillStyle = wg; ctx.fillRect(0,0,W,COUNTER_H);
   ctx.fillStyle = "#b07a46"; ctx.fillRect(0,COUNTER_H-22,W,22);
   ctx.fillStyle = "#8a5a2c"; ctx.fillRect(0,COUNTER_H-6,W,6);
   ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(0,COUNTER_H-22,W,3);
+  // 元叙事：修好的物件摆上柜台前脸，铺子随修复「变好看」
+  const owns = save.bought||[];
+  if(owns.length){
+    const step = (W-44)/owns.length, sy = COUNTER_H-11;
+    ctx.font='20px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    owns.forEach((idx,i)=>{ const it=SHOP[idx]; if(!it) return; ctx.fillText(it.ico, 30+step*(i+.5), sy); });
+  }
   // 门（客人从这里进出）
   ctx.fillStyle="#9c6b3d"; roundRect(8,8,34,COUNTER_H-30,6); ctx.fill();
   ctx.fillStyle="#f2b134"; ctx.beginPath(); ctx.arc(36,COUNTER_H/2-4,2.5,0,7); ctx.fill();
