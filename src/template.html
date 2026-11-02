@@ -10,14 +10,14 @@ html,body{height:100%;background:#f6ead8;font-family:-apple-system,"PingFang SC"
 #app{position:relative;max-width:480px;height:100%;margin:0 auto;display:flex;flex-direction:column}
 canvas{display:block;width:100%;flex:1;touch-action:none}
 .top{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 4px;font-weight:700}
-.pill{background:#fff8ee;border:2px solid #e4cfb2;border-radius:20px;padding:4px 12px;font-size:14px}
+.pill{background:linear-gradient(#fffdf6,#f2ddb8);border:2px solid #c8912f;border-radius:20px;padding:4px 12px;font-size:14px;box-shadow:0 2px 0 #d8bf9c,inset 0 -2px 3px rgba(200,145,47,.18)}
 .bar{display:flex;gap:10px;justify-content:center;padding:8px 0 14px}
-.tool{position:relative;width:64px;height:64px;border-radius:18px;background:#fff8ee;border:2px solid #e4cfb2;font-size:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 3px 0 #d8bf9c}
+.tool{position:relative;width:64px;height:64px;border-radius:18px;background:linear-gradient(#fffdf6,#f2ddb8);border:2px solid #c8912f;font-size:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 4px 0 #b98a3a,0 6px 12px rgba(60,35,18,.18)}
 .tool small{font-size:11px;font-weight:700;margin-top:2px}
 .tool img{width:34px;height:34px;display:block;object-fit:contain}
 .tool i{position:absolute;top:-6px;right:-6px;font-style:normal;background:#e85d5d;color:#fff;font-size:11px;border-radius:10px;padding:1px 6px}
 .tool.ad i{background:#4a90d9}
-.tool:active{transform:translateY(2px);box-shadow:0 1px 0 #d8bf9c}
+.tool:active{transform:translateY(2px);box-shadow:0 1px 0 #b98a3a}
 .mask{position:absolute;inset:0;background:rgba(60,40,25,.55);display:none;align-items:center;justify-content:center;z-index:10}
 .mask.on{display:flex}
 .card{width:84%;background:#fff8ee;border-radius:22px;padding:22px 18px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.25);animation:pop .25s ease}

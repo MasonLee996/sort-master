@@ -10,11 +10,12 @@ parts = []
 AD = "assets"
 if os.path.isdir(AD):
     for f in sorted(os.listdir(AD)):
-        if not f.lower().endswith(".png"):
+        if not f.lower().endswith((".png", ".jpg", ".jpeg")):
             continue
         with open(os.path.join(AD, f), "rb") as fh:
             b64 = base64.b64encode(fh.read()).decode("ascii")
-        parts.append('"%s":"data:image/png;base64,%s"' % (os.path.splitext(f)[0], b64))
+        mime = "image/jpeg" if f.lower().endswith((".jpg", ".jpeg")) else "image/png"
+        parts.append('"%s":"data:%s;base64,%s"' % (os.path.splitext(f)[0], mime, b64))
 prelude = "const ASSETS={" + ",".join(parts) + "};\n"
 
 t = open("template.html", encoding="utf8").read()

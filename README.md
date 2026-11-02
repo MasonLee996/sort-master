@@ -20,7 +20,7 @@
 | 路径 | 说明 |
 |---|---|
 | `index.html` | 构建产物，单文件可直接打开 / GitHub Pages 发布（贴图已 base64 内联） |
-| `src/assets/` | 贴图素材：10 个物件 + 4 个道具图标，128×128 透明 PNG |
+| `src/assets/` | 贴图素材：10 物件 + 4 道具图标（透明 PNG）+ 8 角色立绘（PNG）+ 墙/桌纹理（JPEG） |
 | `src/template.html` | HTML/CSS 模板（`/*__JS__*/` 占位） |
 | `src/core.js` | 数据（关卡/物件/剧情）+ 有解生成器 |
 | `src/game_a.js` `game_b.js` | 绘制、音效、交互、三消、道具 |

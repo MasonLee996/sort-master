@@ -110,28 +110,43 @@ function drawItem(x,y,s,col,dim,rot){
   ctx.restore();
 }
 // 场景：木桌 + 竹筐 + 黑猫
+function cover(img, x, y, w, h){
+  if(!img || !img.width) return false;
+  const iw=img.width, ih=img.height, s=Math.max(w/iw, h/ih), dw=iw*s, dh=ih*s;
+  ctx.drawImage(img, x+(w-dw)/2, y+(h-dh)/2, dw, dh);
+  return true;
+}
 function drawScene(now){
   const B=BASKET;
-  // 木桌
-  const tg=ctx.createLinearGradient(0,B.y+B.h*.3,0,H); tg.addColorStop(0,"#c99766"); tg.addColorStop(1,"#a8743f");
-  ctx.fillStyle=tg; ctx.fillRect(0,B.y+B.h*.35,W,H);
-  ctx.strokeStyle="rgba(90,50,20,.18)"; ctx.lineWidth=2;
-  for(let i=0;i<6;i++){ const y=B.y+B.h*.4+i*28; ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(W*.3,y+6,W*.7,y-6,W,y); ctx.stroke(); }
-  // 竹筐（椭圆底 + 编织纹 + 前沿）
+  // 木桌：贴图，回退渐变
+  if(!cover(SPRITES.table, 0, COUNTER_H, W, H-COUNTER_H)){
+    const tg=ctx.createLinearGradient(0,B.y+B.h*.3,0,H); tg.addColorStop(0,"#c99766"); tg.addColorStop(1,"#a8743f");
+    ctx.fillStyle=tg; ctx.fillRect(0,B.y+B.h*.35,W,H);
+    ctx.strokeStyle="rgba(90,50,20,.18)"; ctx.lineWidth=2;
+    for(let i=0;i<6;i++){ const y=B.y+B.h*.4+i*28; ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(W*.3,y+6,W*.7,y-6,W,y); ctx.stroke(); }
+  }
+  // 竹筐（内凹 + 编织 + 前沿高光）
   const cx=B.x+B.w/2, cy=B.y+B.h*.55, rx=B.w*.52, ry=B.h*.5;
-  ctx.fillStyle="#8a5a2c"; ctx.beginPath(); ctx.ellipse(cx,cy+8,rx+6,ry+8,0,0,7); ctx.fill();
-  ctx.fillStyle="#d9a866"; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.fill();
-  ctx.save(); ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.clip();
-  ctx.strokeStyle="rgba(120,75,30,.35)"; ctx.lineWidth=3;
+  ctx.fillStyle="rgba(40,20,8,.28)"; ctx.beginPath(); ctx.ellipse(cx,cy+10,rx+8,ry+8,0,0,7); ctx.fill();
+  const bg=ctx.createRadialGradient(cx,cy-rx*.2,rx*.15, cx,cy,rx);
+  bg.addColorStop(0,"#e0b070"); bg.addColorStop(.7,"#c08a4e"); bg.addColorStop(1,"#8a5a2c");
+  ctx.fillStyle=bg; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.fill();
+  const ig=ctx.createRadialGradient(cx,cy,ry*.2, cx,cy,ry);
+  ig.addColorStop(0,"#9a652f"); ig.addColorStop(.75,"#835225"); ig.addColorStop(1,"#5f3a18");
+  ctx.save(); ctx.beginPath(); ctx.ellipse(cx,cy,rx*.9,ry*.9,0,0,7); ctx.clip();
+  ctx.fillStyle=ig; ctx.fillRect(cx-rx,cy-ry,rx*2,ry*2);
+  ctx.strokeStyle="rgba(90,50,20,.22)"; ctx.lineWidth=3;
   for(let i=-12;i<=12;i++){ ctx.beginPath(); ctx.moveTo(cx+i*18,cy-ry); ctx.lineTo(cx+i*18+30,cy+ry); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx+i*18,cy-ry); ctx.lineTo(cx+i*18-30,cy+ry); ctx.stroke(); }
   ctx.restore();
-  ctx.strokeStyle="#7a4c22"; ctx.lineWidth=7; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.stroke();
+  ctx.strokeStyle="rgba(255,220,160,.45)"; ctx.lineWidth=6; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.stroke();
+  ctx.strokeStyle="#6e4020"; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(cx,cy,rx*.9,ry*.9,0,0,7); ctx.stroke();
 }
 function drawCat(now){
   const x=W-66, y=COUNTER_H-66+Math.sin(now/400)*2, s=1;   // 黑猫蹲在柜台上
   ctx.save(); ctx.translate(x,y);
   if(catMood==="lose"||catMood==="danger"){ ctx.translate(0,Math.sin(now/60)*2); }
-  ctx.fillStyle="#2b2320";
+  const cg=ctx.createLinearGradient(0,0,0,46); cg.addColorStop(0,"#3a2f2a"); cg.addColorStop(1,"#1e1714");
+  ctx.fillStyle=cg;
   ctx.beginPath(); ctx.ellipse(30,40,22,18,0,0,7); ctx.fill();               // 身体
   ctx.beginPath(); ctx.arc(30,22,15,0,7); ctx.fill();                          // 头
   ctx.beginPath(); ctx.moveTo(17,14); ctx.lineTo(19,0); ctx.lineTo(27,10); ctx.fill();

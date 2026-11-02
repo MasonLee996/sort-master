@@ -4,12 +4,12 @@
    规则不变：每拿 1 件耐心 -1；交单 → 线篮 +1 格（上限 SLOT_MAX）+ 金币。 */
 // 普通客人（循环出场）
 const GUESTS = [
-  {ico:"👵",n:"奶奶"},{ico:"👧",n:"小花"},{ico:"🧔",n:"木匠"},{ico:"👩‍🍳",n:"厨娘"},
-  {ico:"👮",n:"巡警"},{ico:"👴",n:"老邮差"}
+  {ico:"👵",n:"奶奶",img:"granny"},{ico:"👧",n:"小花",img:"girl"},{ico:"🧔",n:"木匠",img:"carpenter"},{ico:"👩‍🍳",n:"厨娘",img:"cook"},
+  {ico:"👮",n:"巡警",img:"police"},{ico:"👴",n:"老邮差",img:"postman"}
 ];
 // 特殊客人：VIP（斗篷客，重赏短耐心）/ 黑猫假扮（陷阱，喂它就偷格子）
-const VIP_GUEST = {ico:"🧙",n:"斗篷客",kind:"vip"};
-const CAT_GUEST  = {ico:"😼",n:"神秘客",kind:"imposter"};
+const VIP_GUEST = {ico:"🧙",n:"斗篷客",kind:"vip",img:"cloak"};
+const CAT_GUEST  = {ico:"😼",n:"神秘客",kind:"imposter",img:"cat"};
 const IMPOSTOR_SAY = ["喵（咳）…我是来买东西的！","快给我，别问那么多","嘻…这颜色归我了","别老盯着我的尾巴看"];
 // 剧情串联：小花是跨关回访的常客，在 3/5/7/9 关必出现，完成她订单→故事+1、额外金币
 const XH_LEVELS = [3,5,7,9];
@@ -132,10 +132,12 @@ function guestPos(o){
   return {x: L + span*o.seat + 30, y: 62};
 }
 function drawCounter(now){
-  // 墙 + 柜台台面（随修复进度变暖）
-  const prog = (save.bought?save.bought.length:0)/SHOP.length;
-  const wg = ctx.createLinearGradient(0,0,0,COUNTER_H); wg.addColorStop(0, prog>.5?"#fff0d6":"#f3e2c7"); wg.addColorStop(1, prog>0?"#f0dcb8":"#e8d0ad");
-  ctx.fillStyle = wg; ctx.fillRect(0,0,W,COUNTER_H);
+  // 墙 + 柜台台面（墙用贴图，回退渐变）
+  if(!cover(SPRITES.wall, 0, 0, W, COUNTER_H)){
+    const prog = (save.bought?save.bought.length:0)/SHOP.length;
+    const wg = ctx.createLinearGradient(0,0,0,COUNTER_H); wg.addColorStop(0, prog>.5?"#fff0d6":"#f3e2c7"); wg.addColorStop(1, prog>0?"#f0dcb8":"#e8d0ad");
+    ctx.fillStyle = wg; ctx.fillRect(0,0,W,COUNTER_H);
+  }
   ctx.fillStyle = "#b07a46"; ctx.fillRect(0,COUNTER_H-22,W,22);
   ctx.fillStyle = "#8a5a2c"; ctx.fillRect(0,COUNTER_H-6,W,6);
   ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(0,COUNTER_H-22,W,3);
@@ -173,10 +175,20 @@ function drawGuest(o, now){
     ctx.beginPath(); ctx.arc(x,y,R,-Math.PI/2,-Math.PI/2+Math.PI*2*p); ctx.stroke();
   }
   if(o.kind==="vip"){ ctx.fillStyle="rgba(224,169,58,.18)"; ctx.beginPath(); ctx.arc(x,y,R+5,0,7); ctx.fill(); }  // VIP 金光
-  ctx.fillStyle = o.done?"#e6f4e2":o.gone?"#f6dede":"#fff8ee"; ctx.beginPath(); ctx.arc(x,y,R-3,0,7); ctx.fill();
-  const face = o.done?"😊":o.gone?"😤":angry?"😠":o.g.ico;
-  ctx.font = `${Math.round(30*(1+bounce*.25))}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
-  ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(face, x, y+2);
+  const sp = SPRITES[o.g.img];
+  if(sp){
+    const ps = 54 * (1 + bounce*.25);
+    ctx.save(); ctx.beginPath(); ctx.arc(x, y+3, R-2, 0, 7); ctx.clip();
+    ctx.drawImage(sp, x-ps/2, y+3-ps*0.45, ps, ps);
+    ctx.restore();
+    if(o.done){ ctx.fillStyle="rgba(90,180,90,.5)"; ctx.beginPath(); ctx.arc(x,y+3,R-2,0,7); ctx.fill(); }
+    else if(o.gone){ ctx.fillStyle="rgba(180,80,80,.5)"; ctx.beginPath(); ctx.arc(x,y+3,R-2,0,7); ctx.fill(); }
+  } else {
+    ctx.fillStyle = o.done?"#e6f4e2":o.gone?"#f6dede":"#fff8ee"; ctx.beginPath(); ctx.arc(x,y,R-3,0,7); ctx.fill();
+    const face = o.done?"😊":o.gone?"😤":angry?"😠":o.g.ico;
+    ctx.font = `${Math.round(30*(1+bounce*.25))}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(face, x, y+2);
+  }
   ctx.font="bold 11px sans-serif"; ctx.fillStyle="#6b4428"; ctx.fillText(o.g.n, x, y+R+9);
   if(o.kind==="vip"){ ctx.font="20px sans-serif"; ctx.fillText("👑", x, y-R-13); }   // VIP 皇冠
   // 需求牌：物件 + 进度（挂在客人左侧）

@@ -20,9 +20,10 @@ function draw(now){
   // 线篮
   const danger = slot.length >= slotCap-2;
   const s0 = slotRect(0);
-  ctx.fillStyle = danger ? (Math.sin(now/120)>0 ? "#f6c2b4" : "#f0a996") : "#e9d3b4";
-  roundRect(s0.x-8, slotY-8, slotW+16, s0.s+16, 16); ctx.fill();
-  ctx.strokeStyle = danger ? "#d9534f" : "#c9a982"; ctx.lineWidth=3; ctx.stroke();
+  const tg = ctx.createLinearGradient(0, slotY-8, 0, slotY+s0.s+8);
+  tg.addColorStop(0, danger ? "#7a4a2e" : "#5e3a20"); tg.addColorStop(1, danger ? "#54290f" : "#3a2210");
+  ctx.fillStyle = tg; roundRect(s0.x-8, slotY-8, slotW+16, s0.s+16, 18); ctx.fill();
+  ctx.strokeStyle = danger ? "#e8604a" : "#c8912f"; ctx.lineWidth=3; ctx.stroke();
   for(let i=0;i<SLOT_MAX;i++){ const r=slotRect(i);
     if(i<slotCap){ ctx.fillStyle = (i===slotCap-1 && slotFlash>now) ? "#ffe08a" : "#fbf1e2"; roundRect(r.x+3,r.y+3,r.s-6,r.s-6,10); ctx.fill(); }
     else { ctx.fillStyle="rgba(120,90,60,.18)"; roundRect(r.x+3,r.y+3,r.s-6,r.s-6,10); ctx.fill();
