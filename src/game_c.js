@@ -109,5 +109,20 @@ function openShop(){
   };
 }
 
+/* ---------- 每日签到（留存钩子） ---------- */
+function dayKey(){ const d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
+function maybeCheckIn(cb){
+  const today = dayKey();
+  if(save.lastDay === today) return cb();                 // 今天已签到
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yk = y.getFullYear()+"-"+(y.getMonth()+1)+"-"+y.getDate();
+  save.streak = (save.lastDay===yk) ? (save.streak||0)+1 : 1;   // 连续天数
+  save.lastDay = today;
+  const reward = 20 + save.streak*5;                     // 连签越多越多
+  save.coins += reward; persist(); updateHUD();
+  modal(`<h2>📅 每日签到 · 第 ${save.streak} 天</h2><p>连续来铺子，灰雾都散得快些～</p><p>领取 💰 +${reward} 金币！${save.streak>=3?"<br><small style='color:#c0582a'>连签奖励已解锁，明天更多！</small>":""}</p><button class="btn" id="bCi">收下，开工</button>`);
+  document.getElementById("bCi").onclick = ()=>{ closeModal(); cb(); };
+}
+
 /* ---------- 启动 ---------- */
-window.addEventListener("load", ()=>{ startLevel(save.level); requestAnimationFrame(draw); });
+window.addEventListener("load", ()=>{ maybeCheckIn(()=>{ startLevel(save.level); requestAnimationFrame(draw); }); });
