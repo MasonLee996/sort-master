@@ -352,38 +352,27 @@ function drawScene(now){
     ctx.strokeStyle="rgba(90,50,20,.18)"; ctx.lineWidth=2;
     for(let i=0;i<6;i++){ const y=B.y+B.h*.4+i*28; ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(W*.3,y+6,W*.7,y-6,W,y); ctx.stroke(); }
   }
-  // 竹筐（内凹 + 编织 + 前沿高光）—— 椭圆上下贴满筐区：顶接柜台、底接托盘，无空档
-  const cx=B.x+B.w/2, cy=B.y+B.h*.5, rx=B.w*.54, ry=B.h*.5;
-  ctx.fillStyle="rgba(40,20,8,.28)"; ctx.beginPath(); ctx.ellipse(cx,cy+10,rx+8,ry+8,0,0,7); ctx.fill();
-  const bg=ctx.createRadialGradient(cx,cy-rx*.2,rx*.15, cx,cy,rx);
-  bg.addColorStop(0,"#e0b070"); bg.addColorStop(.7,"#c08a4e"); bg.addColorStop(1,"#8a5a2c");
-  ctx.fillStyle=bg; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.fill();
-  const ig=ctx.createRadialGradient(cx,cy,ry*.2, cx,cy,ry);
-  ig.addColorStop(0,"#9a652f"); ig.addColorStop(.75,"#835225"); ig.addColorStop(1,"#5f3a18");
-  ctx.save(); ctx.beginPath(); ctx.ellipse(cx,cy,rx*.9,ry*.9,0,0,7); ctx.clip();
-  ctx.fillStyle=ig; ctx.fillRect(cx-rx,cy-ry,rx*2,ry*2);
-  ctx.strokeStyle="rgba(90,50,20,.22)"; ctx.lineWidth=3;
-  for(let i=-12;i<=12;i++){ ctx.beginPath(); ctx.moveTo(cx+i*18,cy-ry); ctx.lineTo(cx+i*18+30,cy+ry); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx+i*18,cy-ry); ctx.lineTo(cx+i*18-30,cy+ry); ctx.stroke(); }
-  ctx.restore();
-  ctx.strokeStyle="rgba(255,220,160,.45)"; ctx.lineWidth=6; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.stroke();
-  ctx.strokeStyle="#6e4020"; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(cx,cy,rx*.9,ry*.9,0,0,7); ctx.stroke();
+  // 筐内衬：紧贴物件堆的暗色内腔（大部分被物件盖住，只在缝隙里透出深度）
+  const cx=B.x+B.w/2, icy=B.y+B.h*.42, irx=B.w*.52, iry=B.h*.44;
+  const ig=ctx.createRadialGradient(cx,icy-iry*.3,irx*.2, cx,icy,irx);
+  ig.addColorStop(0,"#7a5228"); ig.addColorStop(.7,"#5a3a1c"); ig.addColorStop(1,"#3c2410");
+  ctx.fillStyle=ig; ctx.beginPath(); ctx.ellipse(cx,icy,irx,iry,0,0,7); ctx.fill();
+  ctx.strokeStyle="rgba(230,190,130,.5)"; ctx.lineWidth=5;   // 筐口后唇（细）
+  ctx.beginPath(); ctx.ellipse(cx,icy,irx,iry,0,Math.PI*1.05,Math.PI*1.95); ctx.stroke();
 }
-/* 前筐沿：画在物件之后，把堆底物件"收进"筐里 —— 筐是容器而不是垫在底下的盘子 */
+/* 前挡板：画在物件之后 —— 容器只露"后唇 + 前板"，没有可空的盆腹 */
 function drawBasketFront(){
-  const B=BASKET, cx=B.x+B.w/2, cy=B.y+B.h*.5, rx=B.w*.54, ry=B.h*.5;
-  const fy = cy + ry*0.30;                                  // 前沿只盖住底部空弧，物件主体留在筐口
-  ctx.save();
-  ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.clip();
-  const g = ctx.createLinearGradient(0,fy-8,0,cy+ry);
-  g.addColorStop(0,"#c08a4e"); g.addColorStop(.5,"#9a6430"); g.addColorStop(1,"#663c1c");
-  ctx.fillStyle=g; ctx.fillRect(cx-rx-4, fy-8, rx*2+8, ry+8);
-  ctx.strokeStyle="rgba(80,45,18,.35)"; ctx.lineWidth=3;
-  for(let k=1;k<=3;k++){ ctx.beginPath(); ctx.ellipse(cx,cy,rx*(1-k*.07),ry*(1-k*.07),0,Math.PI*.12,Math.PI*.88); ctx.stroke(); }
-  ctx.restore();
-  ctx.strokeStyle="rgba(255,225,170,.55)"; ctx.lineWidth=6;  // 前唇高光
-  ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,Math.PI*.16,Math.PI*.84); ctx.stroke();
-  ctx.strokeStyle="rgba(105,60,28,.85)"; ctx.lineWidth=3;
-  ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,Math.PI*.14,Math.PI*.86); ctx.stroke();
+  const B=BASKET;
+  const fy = B.y + B.h*0.66;                                // 前板顶缘（盖住堆底）
+  const g=ctx.createLinearGradient(0,fy,0,B.y+B.h);
+  g.addColorStop(0,"#a8713c"); g.addColorStop(1,"#5e3a1c");
+  ctx.fillStyle=g; ctx.fillRect(0,fy,W,B.y+B.h-fy+6);
+  const py = fy+(B.y+B.h-fy)*.45;                            // 横板缝
+  ctx.strokeStyle="rgba(50,28,10,.28)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,py); ctx.lineTo(W,py); ctx.stroke();
+  ctx.fillStyle="#c08a4e"; ctx.fillRect(0,fy-7,W,14);        // 顶缘唇边
+  ctx.fillStyle="rgba(255,225,170,.5)"; ctx.fillRect(0,fy-7,W,3);
+  ctx.fillStyle="rgba(40,22,8,.35)"; ctx.fillRect(0,fy+6,W,2);
 }
 function drawCat(now){
   // 黑猫蹲在柜台右侧（贴图立绘，底部沉入台面；回退矢量猫）
