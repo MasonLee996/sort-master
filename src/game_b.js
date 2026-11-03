@@ -1,4 +1,5 @@
 /* ---------- 主循环绘制 ---------- */
+let hintTarget=null, hintBlocker=null, hintT=0;   // 被压住时的引导高亮
 function draw(now){
   if(!W || !H || H<2){ try{ layout(); }catch(e){} }
   try{
@@ -11,7 +12,10 @@ function draw(now){
   // 堆叠
   const alive = tiles.filter(t=>t.alive).sort((a,b)=>a.z-b.z || a.y-b.y), WANT = wantedSet();
   for(const t of alive){
-    const r = tileRect(t), cov = isCovered(t,tiles);
+    const r = tileRect(t);
+    // 压暗口径与点击判定完全一致（都是像素级：看得见 = 点得到）：
+    // 只要还有一部分实体像素没被更上层盖住，就保持原样；全被盖住才压暗。
+    const cov = !visiblePoint(t, alive);   // 像素级，与点击判定同源
     // 客人要的、且现在能拿的：贴合金光呼吸 —— 染金剪影垫在物件底下，与物件同形，不再画浮空圆环
     if(WANT[t.color] && !cov){
       const p = .5 + .5*Math.sin(now/200);
@@ -32,7 +36,38 @@ function draw(now){
     drawItem(r.x,r.y,r.s,t.color, cov && peekT<=0, t.rot);
   }
   ctx.restore();
+  // 被压住时的引导：点中的那个描红边，真正压着它的那个描金边+金圈（告诉玩家该拿哪个）
+  if(hintT>0 && hintTarget){
+    const pulse = .5 + .5*Math.sin(now/140);
+    if(hintTarget.alive){
+      const r = tileRect(hintTarget);
+      ctx.save();
+      ctx.strokeStyle = "rgba(232,83,79,.95)"; ctx.lineWidth = 3;
+      ctx.setLineDash([6,4]); ctx.lineDashOffset = -now/60;
+      roundRect(r.x-2, r.y-2, r.s+4, r.s+4, 10); ctx.stroke();
+      ctx.restore();
+    }
+    if(hintBlocker && hintBlocker.alive){
+      const r = tileRect(hintBlocker), gcx = r.x+r.s/2, gcy = r.y+r.s/2;
+      ctx.save();
+      ctx.globalAlpha = .55 + .45*pulse;
+      ctx.strokeStyle = "#ffd668"; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.arc(gcx, gcy, r.s*.62, 0, 7); ctx.stroke();
+      ctx.globalAlpha = .30 + .35*pulse;
+      ctx.beginPath(); ctx.arc(gcx, gcy, r.s*.62 + 5, 0, 7); ctx.stroke();
+      ctx.restore();
+    }
+    if(--hintT<=0){ hintTarget=null; hintBlocker=null; }
+  }
   drawBasketFront();                                        // 前筐沿盖住堆底物件（筐=容器）
+  // 飞行中：画在线篮栏之前 —— 飞向线篮途中尺寸还没缩到槽内大小，
+  // 下缘会超出线篮栏范围，先画就能被线篮栏自然遮住，不会在栏下漏出碎屑。
+  for(let i=flying.length-1;i>=0;i--){
+    const f=flying[i]; f.t=Math.min(1,f.t+.12);
+    const e = 1-Math.pow(1-f.t,3), x=f.x0+(f.x1-f.x0)*e, y=f.y0+(f.y1-f.y0)*e - Math.sin(e*Math.PI)*40;
+    const s=f.s0+(f.s1-f.s0)*e; drawItem(x,y,s,f.color,false,f.rot*(1-e));
+    if(f.t>=1){ flying.splice(i,1); f.done(); }
+  }
   // 线篮
   const danger = slot.length >= slotCap-2;
   const s0 = slotRect(0);
@@ -46,13 +81,6 @@ function draw(now){
     else { ctx.fillStyle="rgba(120,90,60,.18)"; roundRect(r.x+3,r.y+3,r.s-6,r.s-6,10); ctx.fill();
       ctx.font=(r.s*.36)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=.55; ctx.fillText("🔒",r.x+r.s/2,r.y+r.s/2); ctx.globalAlpha=1; } }
   slot.forEach((it,i)=>{ const r=slotRect(i); it.dx += (r.x-it.dx)*.35; drawItem(it.dx+3,r.y+3,r.s-6,it.color,false,0); });
-  // 飞行中
-  for(let i=flying.length-1;i>=0;i--){
-    const f=flying[i]; f.t=Math.min(1,f.t+.12);
-    const e = 1-Math.pow(1-f.t,3), x=f.x0+(f.x1-f.x0)*e, y=f.y0+(f.y1-f.y0)*e - Math.sin(e*Math.PI)*40;
-    const s=f.s0+(f.s1-f.s0)*e; drawItem(x,y,s,f.color,false,f.rot*(1-e));
-    if(f.t>=1){ flying.splice(i,1); f.done(); }
-  }
   // 交付：收好的物件飞向客人
   for(let i=deliverFx.length-1;i>=0;i--){ const d=deliverFx[i], e=(now-d.t0)/450; if(e<0) continue;
     if(e>=1){ deliverFx.splice(i,1); burst(d.x1,d.y1,COLORS[d.c].c); continue; }
@@ -80,21 +108,42 @@ function draw(now){
 /* ---------- 交互 ---------- */
 let busy=false;
 cv.addEventListener("pointerdown", e=>{
-  if(state!=="play" || busy) return;
+  if(state!=="play") return;
+  if(busy){ toast("等一下～"); return; }             // 飞行动画期间：给反馈，不再静默吞掉点击
   const b=cv.getBoundingClientRect(), x=e.clientX-b.left, y=e.clientY-b.top;
-  const cand = tiles.filter(t=>t.alive).sort((a,b)=>b.z-a.z);
-  let blocked=null;
-  for(const t of cand){
-    const r=tileRect(t), rad=r.s*.55;                // 命中半径对齐视觉（贴图 d=1.16s，内容占 88%）
-    const dx=x-(r.x+r.s/2), dy=y-(r.y+r.s/2);
-    if(dx*dx+dy*dy > rad*rad) continue;
-    if(isCovered(t,tiles)){ blocked=t; continue; }   // 被压住：先跳过，同点位可能有看得见、能拿的
-    pick(t,r); return;
+  // 遍历顺序必须与绘制顺序一致：draw 里是 z 升序 → y 升序，即「后画的压在上面」。
+  // 原实现用 z 降序 + 数组序，同层物件的上下关系与画面相反 → 点 A 拿走 B。
+  const cand = tiles.filter(t=>t.alive).sort((a,b)=>a.z-b.z || a.y-b.y);
+  let blocked=null, blocker=null;
+  if(crateFrontHit(x,y)) return;                     // 点在筐沿上：那是盖在物件前面的，不该穿透
+  const WANT = wantedSet();
+  // 三档命中，从严到宽（从严到宽的顺序保证「看到的实体」优先）：
+  //   0 精确实体  1 实体外扩2px(手指按偏)  2 金光剪影(客人要的物件外围那一圈)
+  for(let pass=0; pass<3 && !blocked; pass++){
+    for(let i=cand.length-1; i>=0; i--){          // 从最上层往下找（与绘制顺序一致）
+      const t = cand[i], r = tileRect(t);
+      const cx = r.x+r.s/2, cy = r.y+r.s/2, rot = t.rot||0;
+      let hit;
+      if(pass===2) hit = WANT[t.color] && hitMask(ITEM_KEYS[t.color], x, y, cx, cy, r.s*1.24, rot, true);
+      else         hit = hitMask(ITEM_KEYS[t.color], x, y, cx, cy, r.s*1.16, rot, pass===1);
+      if(!hit) continue;
+      // 像素级遮挡：只有「点的这个位置」被更上层的物件盖住才算点不到。
+      // 物件别处被压住，不该妨碍玩家拿它露在外面的部分（所见即所得）。
+      const cov = pointCovered(t, tiles, x, y);
+      if(cov){ blocked=t; blocker=cov; break; }   // 明确提示，不再乱拿别的
+      pick(t,r); return;
+    }
   }
-  if(blocked){ toast("被压住了，先拿上面的"); cat("start"); beep(180,.08,"square",.05); }
+  if(blocked){
+    // 明确指出「该拿哪个」：被点的描红边，真正压着它的那个描金边+金圈
+    hintTarget = blocked; hintBlocker = blocker || findBlocker(blocked, tiles); hintT = 90;
+    toast(hintBlocker ? "这个被压住了 → 先拿发光的那个" : "这个被压住了，先拿上面的");
+    cat("start"); beep(180,.08,"square",.05);
+  }
 });
 function pick(t,r){
-  if(slot.length + flying.length >= slotCap) return;
+  if(slot.length + flying.length >= slotCap){ toast("篮子满了！先交一单腾位置"); beep(150,.1,"square",.06); return; }
+  hintTarget=null; hintBlocker=null; hintT=0;        // 拿走了就别再提示旧的
   t.alive=false; SFX.pick(); vibrate(8); tickOrders();
   // 同色插到同色后面（抓大鹅式归堆）
   let idx = slot.length; for(let i=slot.length-1;i>=0;i--) if(slot[i].color===t.color){ idx=i+1; break; }

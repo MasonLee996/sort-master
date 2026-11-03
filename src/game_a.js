@@ -56,12 +56,15 @@ function layout(){
   const cw = W*1.06, chh = cw*CRATE_AR, cbot = slotY - 10;
   CRATE = {x:(W-cw)/2, y:cbot-chh, w:cw, h:chh};
   // 物件区 = 筐内底（贴图里内腔约 x 10%~90%、y 10%~78%）
-  const top = CRATE.y + chh*0.10, bot = CRATE.y + chh*0.78;
+  // ⚠ 物件区下边界必须收在筐前沿之上：前沿是实心木墙，被它盖住的物件玩家
+  //   完全看不见也点不到（等于凭空消失）。前沿 70% 会吃掉 11.8% 的物件区高度，
+  //   这里让物件区止于 76%，与前沿上沿齐平，物件不再被藏。
+  const top = CRATE.y + chh*0.10, bot = CRATE.y + chh*0.755;
   cell = cw*0.80; ox = CRATE.x + cw*0.10; oy = top;
   BASKET = {x:ox, y:top, w:cell, h:bot-top};
 }
 let BASKET = {x:0,y:0,w:1,h:1}, CRATE = {x:0,y:0,w:1,h:1};
-const CRATE_AR = 339/560, CRATE_FRONT = 0.70;   // 贴图宽高比；前沿(前筐边+前壁)从贴图 70% 高处开始
+const CRATE_AR = 339/560, CRATE_FRONT = 0.755;   // 贴图宽高比；前沿(前筐边+前壁)从贴图 75.5% 高处开始
 window.addEventListener("resize", layout);
 if(window.visualViewport) window.visualViewport.addEventListener("resize", layout);
 window.addEventListener("orientationchange", function(){ setTimeout(layout, 250); });
@@ -102,6 +105,164 @@ const SPRITES = {};
   }catch(e){}
 })();
 
+/* ---------- 点击命中掩膜：按贴图「真实不透明像素」判定，不再用圆圈猜 ----------
+   问题：原命中判定是半径 0.55*s 的圆，但画面上是形状不规则、四周带透明边的贴图
+   （剪刀不透明度仅 11%）。圆圈必然罩住旁边的物件 → 点 A 却拿走 B；
+   反过来贴图边缘的可见像素又落在圆外 → 点了没反应。
+   这里为每个物件贴图预生成二值掩膜（64x64，alpha>40 为实体），
+   点击时把屏幕坐标反算回贴图局部坐标做查表，做到「点到哪就是哪」。
+   a=精确档；aLoose=外扩 1 格（≈2px）的宽容档，只在精确档全不中时兜底，
+   避免手指按偏；同时外扩不会造成「点缝隙却拿到别的物件」。 */
+const MASK = {};          // key -> {w,h,a,aLoose}
+const MASK_N = 64, MASK_ALPHA_TH = 40;
+function buildMask(k){
+  try{
+    if(MASK[k]) return MASK[k];
+    const sp = SPRITES[k];
+    if(!sp || !sp.width) return null;              // 贴图未就绪：稍后重试
+    const c = document.createElement("canvas");
+    c.width = MASK_N; c.height = MASK_N;
+    const g2 = c.getContext("2d");
+    g2.drawImage(sp, 0, 0, MASK_N, MASK_N);
+    const d = g2.getImageData(0, 0, MASK_N, MASK_N).data;
+    const a = new Uint8Array(MASK_N*MASK_N);
+    for(let i=0, j=3; i<a.length; i++, j+=4) a[i] = d[j] > MASK_ALPHA_TH ? 1 : 0;
+    // 宽容档：3x3 最大值滤波（外扩 1 格）
+    const lo = new Uint8Array(MASK_N*MASK_N);
+    for(let y=0;y<MASK_N;y++) for(let x=0;x<MASK_N;x++){
+      let m = 0;
+      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+        const nx=x+dx, ny=y+dy;
+        if(nx<0||ny<0||nx>=MASK_N||ny>=MASK_N) continue;
+        if(a[ny*MASK_N+nx]) m = 1;
+      }
+      lo[y*MASK_N+x] = m;
+    }
+    MASK[k] = {w:MASK_N, h:MASK_N, a, aLoose:lo};
+    return MASK[k];
+  }catch(e){ return null; }
+}
+/* 屏幕点是否落在该物件贴图的实体像素上（考虑旋转 rot 与缩放 d）
+   loose=false 精确档；loose=true 宽容档（外扩约 2px） */
+function hitMask(key, px, py, cx, cy, d, rot, loose){
+  const m = buildMask(key);
+  if(!m) return false;
+  const dx = px-cx, dy = py-cy;
+  const cs = Math.cos(-rot), sn = Math.sin(-rot);
+  const lx = dx*cs - dy*sn, ly = dx*sn + dy*cs;
+  const u = lx/d + 0.5, v = ly/d + 0.5;
+  if(u<0 || u>=1 || v<0 || v>=1) return false;
+  const arr = loose ? m.aLoose : m.a;
+  return arr[((v*m.h)|0)*m.w + ((u*m.w)|0)] === 1;
+}
+/* 筐前沿（前筐边+前壁）画在物件之后，会遮住筐底部的物件。
+   点在筐沿实体上不该穿透去拿被挡住的物件 —— 但筐是镂空藤编，
+   缝隙处物件是透出来的，那里必须能点。
+   ⚠ 不能用缩放到 64x64 的掩膜：筐图是 560x339 非等比，缩放后 y 方向
+   采样点与实际绘制不对齐，会把「缝里露出来的物件」误判成被挡住
+   （实测第10关 id2 可见度 0.78 却点不到）。这里按源图像素精确采样。 */
+const CRATE_PIX = {};                       // key -> {w,h,data:Uint8Array(alpha)}
+function crateAlpha(k){
+  try{
+    if(CRATE_PIX[k]) return CRATE_PIX[k];
+    const sp = SPRITES[k];
+    if(!sp || !sp.width) return null;
+    const c = document.createElement("canvas");
+    c.width = sp.width; c.height = sp.height;
+    const g2 = c.getContext("2d");
+    g2.drawImage(sp, 0, 0);
+    const d = g2.getImageData(0, 0, sp.width, sp.height).data;
+    const a = new Uint8Array(sp.width*sp.height);
+    for(let i=0, j=3; i<a.length; i++, j+=4) a[i] = d[j];
+    CRATE_PIX[k] = {w:sp.width, h:sp.height, a};
+    return CRATE_PIX[k];
+  }catch(e){ return null; }
+}
+function crateFrontHit(px, py){
+  const C = CRATE, sp = SPRITES.crate;
+  if(!sp || !sp.width || C.w < 2) return false;
+  const p = crateAlpha("crate");
+  if(!p) return false;
+  // 与 drawBasketFront 完全一致：源图下 (1-CRATE_FRONT) 段 -> 筐下同比例段
+  const u = (px - C.x)/C.w;
+  const v = (py - (C.y + C.h*CRATE_FRONT))/(C.h*(1-CRATE_FRONT));
+  if(u<0 || u>=1 || v<0 || v>=1) return false;
+  const sx = Math.min(p.w-1, (u*p.w)|0);
+  const sy = Math.min(p.h-1, ((CRATE_FRONT + v*(1-CRATE_FRONT))*p.h)|0);
+  return p.a[sy*p.w + sx] > MASK_ALPHA_TH;
+}
+
+/* 找出真正压住 t 的物件（z 更高，且贴图像素上确实盖住它）——
+   用来明确告诉玩家「先拿哪一个」，而不是笼统一句「先拿上面的」。 */
+function findBlocker(t, list){
+  const key = ITEM_KEYS[t.color];
+  const m = buildMask(key);
+  if(!m) return null;
+  const r = tileRect(t), d = r.s*1.16, cx = r.x+r.s/2, cy = r.y+r.s/2, rot = t.rot||0;
+  let best = null;
+  for(const o of list){
+    if(o===t || !o.alive || !drawnAbove(o,t)) continue;
+    const ro = tileRect(o), od = ro.s*1.16;
+    const ocx = ro.x+ro.s/2, ocy = ro.y+ro.s/2, orot = o.rot||0;
+    let hit = false;
+    for(let py=0; py<MASK_N && !hit; py+=2) for(let px=0; px<MASK_N && !hit; px+=2){
+      if(!m.a[py*MASK_N+px]) continue;
+      const u = (px+0.5)/MASK_N - 0.5, v = (py+0.5)/MASK_N - 0.5;
+      const lx = u*d, ly = v*d, cs = Math.cos(rot), sn = Math.sin(rot);
+      const wx = cx + lx*cs - ly*sn, wy = cy + lx*sn + ly*cs;
+      if(hitMask(ITEM_KEYS[o.color], wx, wy, ocx, ocy, od, orot)) hit = true;
+    }
+    if(hit && (!best || drawnAbove(o, best))) best = o;
+  }
+  return best;
+}
+/* 该点是否被「更上层」的物件盖住 —— 像素级判定：
+   玩家点的是一个具体像素，只有这个像素被压住才算「点不到」；
+   物件别处被压住，不该妨碍玩家拿它露在外面的部分。 */
+function pointCovered(t, list, px, py){
+  const r = tileRect(t);
+  const cx = r.x+r.s/2, cy = r.y+r.s/2;
+  for(const o of list){
+    if(o===t || !o.alive) continue;
+    // 绘制顺序：z 升序 → y 升序，只有画在 t 之后的才真正盖住 t
+    if(!drawnAbove(o,t)) continue;
+    const ro = tileRect(o);
+    if(hitMask(ITEM_KEYS[o.color], px, py, ro.x+ro.s/2, ro.y+ro.s/2, ro.s*1.16, o.rot||0))
+      return o;
+  }
+  return null;
+}
+/* 该物件是否还有露在外面的实体像素（没被更上层的物件盖住）。
+   与点击判定同源：visiblePoint=false 的物件，玩家在它身上点不到任何位置。
+   ⚠ 每帧对每个物件做 O(n²) 采样会掉帧 —— 结果按「当前活着的物件集合」缓存，
+   只在有物件被拿走时重算（VIS_KEY = 存活数+位置指纹）。 */
+let VIS_CACHE = new Map(), VIS_KEY = "";
+function visCacheKey(list){ return list.length + "|" + list.map(t=>t.id).join(","); }
+function visiblePoint(t, list){
+  const m = buildMask(ITEM_KEYS[t.color]);
+  if(!m) return true;                          // 掩膜不可用时不压暗
+  const key = visCacheKey(list);
+  if(key !== VIS_KEY){ VIS_CACHE = new Map(); VIS_KEY = key; }
+  const ck = t.id + "|" + key;
+  if(VIS_CACHE.has(ck)) return VIS_CACHE.get(ck);
+  const r = tileRect(t), d = r.s*1.16, cx = r.x+r.s/2, cy = r.y+r.s/2, rot = t.rot||0;
+  let res = false;
+  for(let py=0; py<MASK_N && !res; py+=2) for(let px=0; px<MASK_N && !res; px+=2){
+    if(!m.a[py*MASK_N+px]) continue;
+    const u = (px+0.5)/MASK_N - 0.5, v = (py+0.5)/MASK_N - 0.5;
+    const lx = u*d, ly = v*d, cs = Math.cos(rot), sn = Math.sin(rot);
+    const wx = cx + lx*cs - ly*sn, wy = cy + lx*sn + ly*cs;
+    let covered = false;
+    for(const o of list){
+      if(o===t || !o.alive || !drawnAbove(o,t)) continue;
+      const ro = tileRect(o);
+      if(hitMask(ITEM_KEYS[o.color], wx, wy, ro.x+ro.s/2, ro.y+ro.s/2, ro.s*1.16, o.rot||0)){ covered=true; break; }
+    }
+    if(!covered) res = true;                   // 找到一个露在外面的点
+  }
+  VIS_CACHE.set(ck, res);
+  return res;
+}
 /* 客人想要物件的「贴合金光」：把物件贴图剪影染成金色，与物件同形 —— 不再画浮空圆环 */
 const GOLD = {};
 function goldSprite(col){
@@ -171,10 +332,21 @@ function cover(img, x, y, w, h){
 }
 function drawScene(now){
   const top=COUNTER_H;
-  if(!cover(SPRITES.table, 0, top, W, H-top)){ ctx.fillStyle="#8a5a30"; ctx.fillRect(0,top,W,H-top); }
-  const dg=ctx.createLinearGradient(0,top,0,H);
+  // ⚠ 桌子纹理只铺到筐底为止：512x512 的方图 cover 拉伸铺满整个下半屏时，
+  //   底部木纹被纵向拉成条纹，在筐与线篮栏之间露出一片乱纹（看着像漏出的碎屑）。
+  //   筐以下本就是柜体，用深色填充更干净。
+  const tableBot = Math.min(H, CRATE.y + CRATE.h);
+  if(!cover(SPRITES.table, 0, top, W, tableBot-top)){ ctx.fillStyle="#8a5a30"; ctx.fillRect(0,top,W,tableBot-top); }
+  const dg=ctx.createLinearGradient(0,top,0,tableBot);
   dg.addColorStop(0,"rgba(40,20,6,.55)"); dg.addColorStop(1,"rgba(30,14,4,.6)");
-  ctx.fillStyle=dg; ctx.fillRect(0,top,W,H-top);
+  ctx.fillStyle=dg; ctx.fillRect(0,top,W,tableBot-top);
+  // 筐以下：深色柜体
+  if(tableBot < H){
+    ctx.fillStyle="#2a1508"; ctx.fillRect(0,tableBot,W,H-tableBot);
+    const cg=ctx.createLinearGradient(0,tableBot,0,H);
+    cg.addColorStop(0,"rgba(20,8,2,.75)"); cg.addColorStop(1,"rgba(18,7,3,.9)");
+    ctx.fillStyle=cg; ctx.fillRect(0,tableBot,W,H-tableBot);
+  }
   const C=CRATE, sp=SPRITES.crate;
   ctx.fillStyle="rgba(20,8,2,.45)";                              // 筐底投影
   ctx.beginPath(); ctx.ellipse(C.x+C.w/2, C.y+C.h*.97, C.w*.42, 10, 0, 0, 7); ctx.fill();

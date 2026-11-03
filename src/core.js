@@ -76,8 +76,27 @@ const CAT_LINES = {
 
 /* ---------- 遮挡判定：自由散落，圆形重叠 + 高层压低层 ---------- */
 // tile: x,y ∈ [0,1]（筐内归一化坐标），r 归一化半径，rot 旋转，z 层
+//
+// ⚠ 两套口径刻意分开，不要合并：
+//
+//   overlapGen / isCoveredGen —— 生成器口径。
+//     genLevel 用它模拟合法拾取序列来保证关卡有解，并决定颜色分配顺序。
+//     保持历史行为：一旦改动，关卡布局、有解性与难度曲线会整体漂移
+//     （实测第7关通过率 42%→16%、第8关 54%→17%），不能动。
+//
+//   overlapView / isCoveredView —— 运行时口径（玩家实际看到/点到的画面）。
+//     判定必须与「绘制顺序」一致，否则画面和规则互相矛盾：
+//       绘制顺序 = z 升序 → y 升序（后画的压在上面）。
+//       旧口径只看 o.z > t.z，漏掉了「同层内 y 更大者压着 y 更小者」这一半，
+//       导致同层里压在上面的物件，画面上确实盖住了别人，判定上却不算被压住，
+//       同一件东西出现两套说法 —— 玩家点它时不知道该拿还是该看提示。
 function overlap(a,b){ const dx=a.x-b.x, dy=a.y-b.y, k=(a.r+b.r)*.82; return dx*dx+dy*dy < k*k; }
-function isCovered(t, list){ for(const o of list){ if(o!==t && o.alive && o.z>t.z && overlap(o,t)) return true; } return false; }
+// 在绘制顺序里排在 t 之后（= 盖在 t 上面）
+function drawnAbove(o, t){ return o.z > t.z || (o.z === t.z && o.y > t.y); }
+function isCoveredGen(t, list){ for(const o of list){ if(o!==t && o.alive && o.z>t.z && overlap(o,t)) return true; } return false; }
+function isCoveredView(t, list){ for(const o of list){ if(o!==t && o.alive && drawnAbove(o,t) && overlap(o,t)) return true; } return false; }
+// 兼容旧名：生成器口径（sim.js / sim2.js / sim3.js 等离线模拟器在用）
+function isCovered(t, list){ return isCoveredGen(t, list); }
 // 退回 / 复活：把物件撒回筐顶
 function pushBack(list, colors){
   const top = list.reduce((m,t)=>Math.max(m,t.z),0)+1, r = list[0] ? list[0].r : .08;
@@ -103,7 +122,7 @@ function genLevel(lv){
     // 2) 模拟拾取顺序：每步从"当前未被遮挡"的格子里随机取一个
     const order = [];
     while(order.length < total){
-      const free = tiles.filter(t => t.alive && !isCovered(t, tiles));
+      const free = tiles.filter(t => t.alive && !isCoveredGen(t, tiles));
       if(!free.length) break;
       const t = free[Math.floor(rnd()*free.length)];
       t.alive = false; order.push(t);
@@ -135,4 +154,4 @@ function genLevel(lv){
   }
   throw new Error("genLevel failed " + lv);
 }
-if(typeof module !== "undefined") module.exports = {genLevel, isCovered, pushBack, LEVELS, SLOT_N, SLOT_MAX, ITEMS};
+if(typeof module !== "undefined") module.exports = {genLevel, isCovered, isCoveredGen, isCoveredView, pushBack, LEVELS, SLOT_N, SLOT_MAX, ITEMS};
