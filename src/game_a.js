@@ -36,15 +36,15 @@ function vibrate(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(e)
 function showErr(e){ try{ var d=document.getElementById('err'); if(d){ d.style.display='block'; d.textContent += '\n'+(e&&e.stack?e.stack.split('\n').slice(0,6).join('\n'):String(e)); } }catch(_){} }
 function layout(){
   DPR = Math.min(2, window.devicePixelRatio||1);
-  let r = cv.getBoundingClientRect();
+  const r = cv.getBoundingClientRect();
   W = r.width || window.innerWidth || 360;
-  H = r.height;
-  if(H < 2){                              // 移动端 WebView 偶发 height:100% 解析为 0 → 按视口高度强算
-    const top=document.querySelector('.top'), bar=document.querySelector('.bar');
-    const oh=(top?top.offsetHeight:0)+(bar?bar.offsetHeight:0);
-    H = Math.max(160, (window.innerHeight||document.documentElement.clientHeight||640) - oh);
-    try{ cv.style.height = H+'px'; }catch(e){}
-  }
+  // 确定性高度：直接用「视口高 − 上下固定栏高」计算，并强制写回 cv.style.height。
+  // 不依赖 CSS flex/100% 在移动端 WebView 偶发塌缩（canvas 会退回内在默认 150px 高度，
+  // 导致 getBoundingClientRect().height 返回 150 而非 0，普通兜底 if(H<2) 漏判 → 画面大片空白）。
+  const topEl=document.querySelector('.top'), barEl=document.querySelector('.bar');
+  const oh=(topEl?topEl.offsetHeight:0)+(barEl?barEl.offsetHeight:0);
+  H = Math.max(160, (window.innerHeight||document.documentElement.clientHeight||640) - oh);
+  try{ cv.style.width='100%'; cv.style.height=H+'px'; }catch(e){}
   cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
   if(!P) return;
   slotW = Math.min(W-24, 420);
